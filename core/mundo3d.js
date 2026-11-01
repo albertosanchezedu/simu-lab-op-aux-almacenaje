@@ -105,6 +105,27 @@
     }
     return t;
   }
+  // Textura suave de hierba seca y tierra (manchas y matas), en gris para teñirla con el color del material.
+  var texHierba = {};
+  function texturaHierba(rep) {
+    if (texHierba[rep]) return texHierba[rep];
+    var c = document.createElement('canvas'); c.width = c.height = 256;
+    var x = c.getContext('2d'), az = SL.azar(13);
+    x.fillStyle = '#f2f2f2'; x.fillRect(0, 0, 256, 256);
+    for (var i = 0; i < 70; i++) { x.fillStyle = 'rgba(' + (az() < 0.5 ? '255,255,255' : '150,150,150') + ',' + (0.12 + az() * 0.15) + ')'; x.beginPath(); x.ellipse(az() * 256, az() * 256, 10 + az() * 30, 6 + az() * 18, az() * 3, 0, 7); x.fill(); }
+    x.strokeStyle = 'rgba(120,120,120,.35)'; x.lineWidth = 1.2;
+    for (var k = 0; k < 500; k++) { var px = az() * 256, py = az() * 256; x.beginPath(); x.moveTo(px, py); x.lineTo(px + (az() - 0.5) * 4, py - 3 - az() * 4); x.stroke(); }
+    var t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rep, rep); t.anisotropy = 4;
+    if ('colorSpace' in t) t.colorSpace = 'srgb'; else t.encoding = T.sRGBEncoding;
+    return (texHierba[rep] = t);
+  }
+  // Copa low-poly facetada (se notan las caras, como una maqueta)
+  function copa(r, color, x, y, z, semilla) {
+    var g = new T.IcosahedronGeometry(r, 1), p = g.attributes.position, az = SL.azar(semilla || 3), v = new T.Vector3(), mapa = {};
+    for (var i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); var k = v.x.toFixed(2) + v.y.toFixed(2) + v.z.toFixed(2); var f = mapa[k] || (mapa[k] = 0.85 + az() * 0.3); v.multiplyScalar(f); p.setXYZ(i, v.x, v.y, v.z); }
+    g.computeVertexNormals();
+    var m = new T.Mesh(g, mat(color, { flatShading: true })); m.position.set(x, y, z); m.castShadow = true; return m;
+  }
   function brillo(color) {
     var m = new T.MeshStandardMaterial({ color: color, emissive: new T.Color(color), emissiveIntensity: 0, roughness: 0.5 });
     emisivos.push(m); return m;
@@ -234,55 +255,24 @@
     return g;
   };
 
-  // Persona "Memoji mini" (como en Cubic Lab), sin cara. En el almacén: chaleco reflectante y botas de seguridad.
-  var ROPA = { piel: ['#f1d0b5', '#e0b48e', '#b98559', '#7e5236'], pelo: ['#3a2a20', '#1f1b18', '#6b4a2e', '#b7863f'],
-    camiseta: ['#2f4fa3', '#2a2a2e', '#edeae3', '#8fac8b', '#c8463e'], pantalon: ['#2b2b30', '#3e5c8a', '#55565c'] };
-  function capsula(r, l) { var k = 'cap' + r + '|' + l; return geos[k] || (geos[k] = new T.CapsuleGeometry(r, l, 4, 10)); }
-  function pieza(g, geo, color, x, y, z) { var m = new T.Mesh(geo, typeof color === 'string' ? mat(color) : color); m.position.set(x || 0, y || 0, z || 0); m.castShadow = true; g.add(m); return m; }
+  // Personas: las mismas de Cubic Lab (core/persona.js), con ropa de seguridad. Aquí miran a -z como las demás piezas.
   P.persona = function (o) {
-    var k = o.semilla || 1, r = function (a, sal) { return a[(k * 7919 + sal * 104729) % a.length]; };
-    var piel = o.piel || r(ROPA.piel, 3), pelo = o.pelo || r(ROPA.pelo, 4), cam = o.camiseta || r(ROPA.camiseta, 1), pan = o.pantalon || r(ROPA.pantalon, 2);
-    var g = new T.Group(), cuerpo = new T.Group(); g.add(cuerpo);
-    var piernas = [], brazos = [];
-    [-1, 1].forEach(function (l) {
-      var cad = new T.Group(); cad.position.set(l * 0.1, 0.64, 0);
-      pieza(cad, capsula(0.085, 0.38), pan, 0, -0.27, 0);
-      pieza(cad, geoCaja(0.13, 0.1, 0.26, 0.04), '#2a2a2e', 0, -0.64, 0.04);   // botas
-      if (o.sentado) cad.rotation.x = -1.45;
-      cuerpo.add(cad); piernas.push(cad);
-    });
-    var torso = pieza(cuerpo, capsula(0.19, 0.3), cam, 0, 0.98, 0); torso.scale.z = 0.75;
-    if (o.chaleco !== false && (o.chaleco || o.casco)) {
-      var ch = pieza(cuerpo, capsula(0.197, 0.22), '#d6ec3a', 0, 0.97, 0); ch.scale.z = 0.78;
-      [0.88, 1.02].forEach(function (y) { var b = pieza(cuerpo, new T.CylinderGeometry(0.2, 0.2, 0.035, 14), '#eef0f2', 0, y, 0); b.scale.z = 0.78; });
+    var w = new T.Group(), p = SL.Persona.crear(o.semilla || 1, { seguridad: o.chaleco !== false, casco: o.casco });
+    p.rotation.y = Math.PI; w.add(p);
+    var u = p.userData;
+    if (o.sentado) {
+      u.piernas.forEach(function (l) { l.rotation.x = -1.45; });
+      u.brazos.forEach(function (b) { b.rotation.x = -0.9; });
+      u.cuerpo.position.y = -0.6;
     }
-    [-1, 1].forEach(function (l) {
-      var hom = new T.Group(); hom.position.set(l * 0.2, 1.18, 0); hom.rotation.z = l * 0.18;
-      pieza(hom, capsula(0.055, 0.34), cam, 0, -0.2, 0);
-      pieza(hom, esferaGeo(0.06), piel, 0, -0.43, 0);
-      if (o.sentado) hom.rotation.x = -0.9;
-      cuerpo.add(hom); brazos.push(hom);
-    });
-    pieza(cuerpo, new T.CylinderGeometry(0.055, 0.06, 0.08, 10), piel, 0, 1.3, 0);
-    var cab = pieza(cuerpo, esferaGeo(0.17), piel, 0, 1.52, 0); cab.scale.set(1, 1.08, 0.96);
-    if (o.casco) {
-      pieza(cuerpo, new T.SphereGeometry(0.185, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), '#f2c230', 0, 1.56, 0);
-      pieza(cuerpo, new T.CylinderGeometry(0.22, 0.22, 0.02, 16), '#f2c230', 0, 1.56, 0.02);
-    } else {
-      var p = pieza(cuerpo, new T.SphereGeometry(0.178, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), pelo, 0, 1.54, -0.01); p.rotation.x = -0.25;
-    }
-    if (o.sentado) cuerpo.position.y = -0.62;
-    cuerpo.rotation.y = Math.PI; // como las demás piezas, mira a -z
-    g.userData.piernas = piernas; g.userData.brazos = brazos; g.userData.cuerpo = cuerpo;
-    return g;
+    w.userData = u;
+    return w;
   };
   function esferaGeo(rr) { var kk = 's' + rr; return geos[kk] || (geos[kk] = new T.SphereGeometry(rr, 14, 10)); }
   function caminar(g, fase, parado) {
-    var u = g.userData; if (!u.piernas) return;
-    var s = parado ? 0 : Math.sin(fase);
-    u.piernas[0].rotation.x = s * 0.45; u.piernas[1].rotation.x = -s * 0.45;
-    u.brazos[0].rotation.x = -s * 0.4; u.brazos[1].rotation.x = s * 0.4;
-    u.cuerpo.position.y = parado ? 0 : Math.abs(Math.cos(fase)) * 0.04;
+    if (!g.userData.piernas) return;
+    if (parado) { g.userData.piernas.forEach(function (l) { l.rotation.x = 0; }); g.userData.brazos[0].rotation.x = g.userData.brazos[1].rotation.x = 0; g.userData.cuerpo.position.y = 0; return; }
+    SL.Persona.caminar(g, fase);
   }
 
   P.coche = function (o) {
@@ -301,12 +291,13 @@
     if (olivo) {
       g.add(cilindro(0.22, 0.32, 1.3, '#8a7058'));
       [[0, 1.9, 0, 1.15], [0.8, 1.6, 0.3, 0.8], [-0.7, 1.7, -0.3, 0.85]].forEach(function (p) {
-        var s = esfera(p[3] * (0.9 + azar() * 0.3), est.arbol || '#a3ad8c', p[0], p[1], p[2]); s.scale.y = 0.72; g.add(s);
+        var s = copa(p[3] * (0.9 + azar() * 0.3), est.arbol || '#a3ad8c', p[0], p[1], p[2], Math.floor(azar() * 999)); s.scale.y = 0.72; g.add(s);
       });
     } else {
       var h = 1.6 + azar() * 0.8;
       g.add(cilindro(0.2, 0.28, h, '#6e5643'));
-      var c = esfera(1.7 + azar() * 0.5, est.arbol2 || '#5e7a4c', 0, h + 1.1, 0); c.scale.y = 0.8; g.add(c);
+      var c = copa(1.7 + azar() * 0.5, est.arbol2 || '#5e7a4c', 0, h + 1.1, 0, Math.floor(azar() * 999)); c.scale.y = 0.8; g.add(c);
+      g.add(copa(0.9, est.arbol2 || '#5e7a4c', 0.9, h + 1.6, 0.3, Math.floor(azar() * 999)));
     }
     return g;
   };
@@ -326,7 +317,17 @@
     g.add(caja(w + 0.6, 0.2, d + 0.6, est.losa || '#ece7de', 0, 0, 0, 0.08));
     var suelo = plano(w, d, est.sueloNave || '#f7f4ee', 0, 0.21, 0); g.add(suelo);
     var muro = est.muro || '#f2eee6';
-    g.add(caja(w + e, h, e, muro, 0, 0.2, z0, 0.05));                       // norte
+    // norte, con huecos de paso (o.puertasNorte: [{ x, ancho }])
+    var pn = (o.puertasNorte || []).slice().sort(function (a, b) { return a.x - b.x; }), xa = x0 - e / 2;
+    pn.forEach(function (p) {
+      var a = p.x - p.ancho / 2, b = p.x + p.ancho / 2;
+      if (a - xa > 0.05) g.add(caja(a - xa, h, e, muro, (xa + a) / 2, 0.2, z0, 0.05));
+      g.add(caja(p.ancho, h - 2.6, e, muro, p.x, 2.8, z0, 0.05));                // dintel
+      g.add(caja(p.ancho + 0.3, 0.18, e + 0.06, est.acento, p.x, 2.62, z0));     // marco
+      [-1, 1].forEach(function (k) { g.add(caja(0.15, 2.45, e + 0.06, est.acento, p.x + k * (p.ancho / 2 + 0.07), 0.2, z0)); });
+      xa = b;
+    });
+    g.add(caja(x1 + e / 2 - xa, h, e, muro, (xa + x1 + e / 2) / 2, 0.2, z0, 0.05));
     g.add(caja(w + e, o.altoFrente || 1.0, e, muro, 0, 0.2, z1, 0.05));     // sur (bajo)
     g.add(caja(w + e, 0.25, e + 0.02, est.acento, 0, h + 0.2, z0));          // remate de color
     // laterales con huecos para los muelles
@@ -371,7 +372,7 @@
     var g = new T.Group();
     (o.lineas || []).forEach(function (l) {
       var dx = l[2] - l[0], dz = l[3] - l[1], largo = Math.sqrt(dx * dx + dz * dz);
-      var m = plano(l[4] || 0.16, largo, l[5] || '#f2c230', (l[0] + l[2]) / 2, 0.23, (l[1] + l[3]) / 2);
+      var m = plano(l[4] || 0.16, largo, l[5] || '#f2c230', (l[0] + l[2]) / 2, o.y != null ? o.y : (l[4] > 0.5 ? 0.225 : 0.23), (l[1] + l[3]) / 2);
       m.rotation.z = -Math.atan2(dx, dz); g.add(m);
     });
     (o.pasos || []).forEach(function (p) { // pasos de peatones
@@ -424,21 +425,21 @@
     var g = P.persona({ chaleco: true, casco: o.casco, semilla: o.semilla || 50 }), u = g.userData, acc = o.accion || 'revisar';
     var mano = u.brazos[0], fase = (o.semilla || 1) * 1.7;
     if (acc === 'revisar') { // lector de códigos en la mano
-      mano.add(caja(0.08, 0.16, 0.12, '#2a2a2e', 0, -0.5, 0.05)); var luz = new T.Mesh(geoCaja(0.05, 0.02, 0.05), brillo('#ff4040')); luz.position.set(0, -0.58, 0.08); mano.add(luz);
+      mano.add(caja(0.07, 0.14, 0.11, '#2a2a2e', 0, -0.52, 0.04)); var luz = new T.Mesh(geoCaja(0.04, 0.02, 0.04), brillo('#ff4040')); luz.position.set(0, -0.56, 0.1); mano.add(luz);
     }
     var cajaMano = null;
-    if (acc === 'preparar') { cajaMano = caja(0.4, 0.3, 0.3, est.cajas ? est.cajas[0] : '#c9a06a', 0, 0.75, -0.35, 0.03); u.cuerpo.add(cajaMano); }
+    if (acc === 'preparar') { cajaMano = caja(0.36, 0.26, 0.28, est.cajas ? est.cajas[0] : '#c9a06a', 0, 0.66, 0.36, 0.03); u.cuerpo.add(cajaMano); }
     animables.push(function (t) {
       var a = t * 2 + fase;
       if (acc === 'etiquetar') { // manos sobre la mesa, pegando etiquetas
         u.brazos[0].rotation.x = -1.1 + Math.sin(a * 2) * 0.25; u.brazos[1].rotation.x = -1.0 + Math.sin(a * 2 + 1.5) * 0.2;
         u.cuerpo.rotation.x = 0.12;
       } else if (acc === 'revisar') { // apunta el lector a las cajas y mira
-        u.brazos[0].rotation.x = -1.2 + Math.sin(a) * 0.15; u.cuerpo.rotation.y = Math.PI + Math.sin(a * 0.4) * 0.5;
+        u.brazos[0].rotation.x = -1.2 + Math.sin(a) * 0.15; u.cuerpo.rotation.y = Math.sin(a * 0.4) * 0.5;
         u.cuerpo.rotation.x = 0.08;
       } else { // coge una caja de la estantería y la deja en el palé
         var k = (Math.sin(a * 0.7) + 1) / 2;
-        u.cuerpo.rotation.y = Math.PI + (k - 0.5) * 2.6; u.cuerpo.rotation.x = 0.35 * Math.abs(Math.sin(a * 1.4));
+        u.cuerpo.rotation.y = (k - 0.5) * 2.6; u.cuerpo.rotation.x = 0.35 * Math.abs(Math.sin(a * 1.4));
         u.brazos[0].rotation.x = u.brazos[1].rotation.x = -1.0;
         cajaMano.visible = Math.sin(a * 0.7) > -0.2;
       }
@@ -486,11 +487,13 @@
     }
     g.add(caja(4.4, 4.4, 0.12, ac, -w / 2 + 4, 0, d / 2 + 0.03));
     g.add(caja(4.0, 4.1, 0.12, '#e9e2d6', -w / 2 + 4, 0, d / 2 + 0.08));
+    g.add(caja(3.4, 3.4, 0.12, ac, w / 2 - 3, 0, d / 2 + 0.03)); g.add(caja(3.0, 3.1, 0.12, '#e9e2d6', w / 2 - 3, 0, d / 2 + 0.08)); // salida de producto
     if (o.rotulo) {
       var tx = textoTextura(o.rotulo, { color: ac, fondo: '#ffffff', tam: 150, logo: 'assets/marca/serenitos-isologo.png' });
-      var r = new T.Mesh(new T.PlaneGeometry(12, 3), new T.MeshStandardMaterial({ map: tx, roughness: 0.8 }));
-      r.position.set(2, h + 1.3, d / 2 + 1.3); r.rotation.x = -0.08; g.add(r);
-      g.add(caja(12.3, 0.2, 0.2, ac, 2, h - 0.25, d / 2 + 1.25));
+      var mr = mat(ac), r = new T.Mesh(geoCaja(12, 3, 0.3, 0.08), [mr, mr, mr, mr, new T.MeshStandardMaterial({ map: tx, roughness: 0.8 }), mr]);
+      r.position.set(2, h - 0.2, d / 2 + 1.2); r.castShadow = true; g.add(r);
+      g.add(caja(12.6, 0.25, 0.5, ac, 2, h - 0.45, d / 2 + 1.2));
+      [-4, 8].forEach(function (x) { g.add(caja(0.2, 1.2, 1.1, '#8c8f97', x, h - 0.6, d / 2 + 0.6)); });
     }
     // silo de leche y depósito de agua al lado
     var sx = w / 2 + 3.2;
@@ -502,12 +505,69 @@
   };
 
   P.camara = function (o) {
-    var g = new T.Group(), w = o.ancho || 8, d = o.fondo || 6;
-    g.add(caja(w, 4, d, '#f7f9fb', 0, 0, 0, 0.25));
-    g.add(caja(w + 0.1, 0.3, d + 0.1, '#7fb3e8', 0, 4, 0, 0.1));
-    g.add(caja(2, 3, 0.12, '#7fb3e8', 0, 0, d / 2 + 0.02, 0.05));
-    var cop = textoTextura('❄', { color: '#7fb3e8', fondo: '#f7f9fb', tam: 200, ancho: 256, alto: 256 });
-    var s = new T.Mesh(new T.PlaneGeometry(1.2, 1.2), new T.MeshStandardMaterial({ map: cop })); s.position.set(-2.4, 2.4, d / 2 + 0.03); g.add(s);
+    var g = new T.Group(), w = o.ancho || 8, d = o.fondo || 6, h = 3.6, panel = '#f4f7fa';
+    var px = o.puerta || 0, pa = 2.2;
+    [[-d / 2], [d / 2]].forEach(function (zz) { // muros norte y sur con hueco de puerta
+      var z = zz[0], a = -w / 2, b = px - pa / 2, c = px + pa / 2;
+      g.add(caja(b - a, h, 0.2, panel, (a + b) / 2, 0.2, z, 0.04)); g.add(caja(w / 2 - c, h, 0.2, panel, (c + w / 2) / 2, 0.2, z, 0.04));
+      g.add(caja(pa, h - 2.8, 0.2, panel, px, 3.0, z, 0.04));
+      for (var k = 0; k < 7; k++) { // cortina de lamas: no se escapa el frío
+        var l = new T.Mesh(geoCaja(0.28, 2.6, 0.02), new T.MeshStandardMaterial({ color: '#cfe6f5', transparent: true, opacity: 0.55, roughness: 0.2 }));
+        l.position.set(px - pa / 2 + 0.17 + k * 0.31, 0.3, z); g.add(l);
+      }
+    });
+    g.add(caja(0.2, h, d, panel, -w / 2, 0.2, 0, 0.04)); g.add(caja(0.2, h, d, panel, w / 2, 0.2, 0, 0.04));
+    g.add(caja(w + 0.3, 0.2, d + 0.3, '#7fb3e8', 0, h + 0.2, 0, 0.05));      // techo con borde azul frío
+    g.add(caja(w, 0.06, d, '#e7f1f8', 0, h + 0.15, 0));
+    g.add(caja(1.6, 0.6, 0.8, '#b9c3cc', w / 2 - 1.5, h + 0.4, 0, 0.08));      // equipo de frío
+    var ter = textoTextura('3 °C', { color: '#ffffff', fondo: '#2f6fb0', tam: 140, ancho: 512, alto: 256 });
+    var t = new T.Mesh(new T.PlaneGeometry(1.0, 0.5), new T.MeshStandardMaterial({ map: ter })); t.position.set(px + 1.8, 2.3, d / 2 + 0.12); g.add(t);
+    var cop = textoTextura('❄', { color: '#7fb3e8', fondo: panel, tam: 200, ancho: 256, alto: 256 });
+    var s2 = new T.Mesh(new T.PlaneGeometry(0.9, 0.9), new T.MeshStandardMaterial({ map: cop })); s2.position.set(px - 2, 2.4, d / 2 + 0.12); g.add(s2);
+    var pa2 = P.palets({ semilla: 17, puntos: [[-w / 2 + 1.2, -d / 2 + 1.0], [-w / 2 + 1.2, d / 2 - 1.0], [w / 2 - 1.2, -d / 2 + 1.0], [w / 2 - 1.2, d / 2 - 1.0]] }); g.add(pa2);
+    return g;
+  };
+
+  // Señales de seguridad (cartelería de almacén): 'carretillas' (peligro), 'epi' (obligatorio chaleco), 'peatones', 'salida'
+  P.senal = function (o) {
+    var c = document.createElement('canvas'); c.width = c.height = 256; var x = c.getContext('2d'), tipo = o.senal || 'carretillas';
+    x.fillStyle = '#ffffff'; x.fillRect(0, 0, 256, 256);
+    if (tipo === 'carretillas') {
+      x.fillStyle = '#f2c230'; x.strokeStyle = '#1c1c1f'; x.lineWidth = 14; x.lineJoin = 'round';
+      x.beginPath(); x.moveTo(128, 22); x.lineTo(238, 222); x.lineTo(18, 222); x.closePath(); x.fill(); x.stroke();
+      x.fillStyle = '#1c1c1f'; x.fillRect(86, 140, 70, 36); x.fillRect(104, 108, 34, 34); x.fillRect(158, 100, 8, 76); x.fillRect(160, 168, 40, 8);
+      x.beginPath(); x.arc(98, 186, 12, 0, 7); x.arc(146, 186, 12, 0, 7); x.fill();
+    } else if (tipo === 'epi') {
+      x.fillStyle = '#2f6fb0'; x.beginPath(); x.arc(128, 128, 118, 0, 7); x.fill();
+      x.fillStyle = '#fff'; x.beginPath(); x.moveTo(84, 70); x.lineTo(110, 60); x.lineTo(128, 86); x.lineTo(146, 60); x.lineTo(172, 70); x.lineTo(182, 196); x.lineTo(74, 196); x.closePath(); x.fill();
+      x.fillStyle = '#2f6fb0'; x.fillRect(76, 128, 104, 12); x.fillRect(76, 158, 104, 12);
+    } else if (tipo === 'peatones') {
+      x.fillStyle = '#3f9b5a'; x.fillRect(10, 10, 236, 236);
+      x.fillStyle = '#fff'; x.beginPath(); x.arc(128, 62, 22, 0, 7); x.fill(); x.fillRect(112, 88, 32, 70);
+      x.save(); x.translate(128, 156); x.rotate(0.35); x.fillRect(-8, 0, 16, 70); x.restore(); x.save(); x.translate(128, 156); x.rotate(-0.35); x.fillRect(-8, 0, 16, 70); x.restore();
+    } else {
+      x.fillStyle = '#3f9b5a'; x.fillRect(0, 40, 256, 176); x.fillStyle = '#fff'; x.font = '800 64px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('SALIDA', 128, 128);
+    }
+    var t = new T.CanvasTexture(c); if ('colorSpace' in t) t.colorSpace = 'srgb'; else t.encoding = T.sRGBEncoding;
+    var g = new T.Group(), tam = o.tam || 0.9, mb = mat('#ffffff');
+    var m = new T.Mesh(geoCaja(tam, tam, 0.05), [mb, mb, mb, mb, new T.MeshStandardMaterial({ map: t }), mb]); m.position.y = o.alto || 2.4; g.add(m);
+    if (o.poste) g.add(caja(0.08, (o.alto || 2.4), 0.08, '#55555c', 0, 0, -0.06));
+    return g;
+  };
+
+  // Bolardos y barandilla amarilla que separan el paso de peatones del de las máquinas
+  P.barandilla = function (o) {
+    var g = new T.Group(), dx = o.x2 - o.x1, dz = o.z2 - o.z1, L = Math.hypot(dx, dz), n = Math.max(1, Math.round(L / 1.6));
+    for (var i = 0; i <= n; i++) g.add(caja(0.12, 1.0, 0.12, '#f2c230', o.x1 + dx * i / n, 0.21, o.z1 + dz * i / n));
+    var r = caja(L, 0.08, 0.08, '#f2c230', (o.x1 + o.x2) / 2, 1.1, (o.z1 + o.z2) / 2); r.rotation.y = -Math.atan2(dz, dx); g.add(r);
+    var r2 = caja(L, 0.06, 0.06, '#1c1c1f', (o.x1 + o.x2) / 2, 0.65, (o.z1 + o.z2) / 2); r2.rotation.y = -Math.atan2(dz, dx); g.add(r2);
+    return g;
+  };
+
+  // Manguera de descarga de leche (de la cisterna al silo)
+  P.manguera = function (o) {
+    var curva = new T.CatmullRomCurve3([new T.Vector3(o.x1, 1.2, o.z1), new T.Vector3((o.x1 + o.x2) / 2, 0.3, (o.z1 + o.z2) / 2), new T.Vector3(o.x2, 1.0, o.z2)]);
+    var g = new T.Group(); g.add(new T.Mesh(new T.TubeGeometry(curva, 20, 0.12, 8, false), mat('#2f2f35')));
     return g;
   };
 
@@ -528,11 +588,14 @@
   };
 
   P.cartel = function (o) {
-    var g = new T.Group();
-    g.add(caja(0.2, 2.2, 0.2, '#55555c', -2.6, 0)); g.add(caja(0.2, 2.2, 0.2, '#55555c', 2.6, 0));
-    var tx = textoTextura(o.texto || '', { color: est.acento, fondo: '#ffffff', tam: 92, logo: o.logo });
-    var m = new T.Mesh(geoCaja(6, 1.5, 0.2, 0.1), [mat(est.acento), mat(est.acento), mat(est.acento), mat(est.acento), new T.MeshStandardMaterial({ map: tx }), mat(est.acento)]);
-    m.position.y = 2.0; m.castShadow = true; g.add(m);
+    var g = new T.Group(), ac = est.acento;
+    g.add(caja(6.8, 0.35, 0.9, '#b9b2a6', 0, 0, 0, 0.08));                 // zócalo de piedra
+    g.add(caja(0.3, 2.4, 0.3, '#55555c', -2.9, 0.3)); g.add(caja(0.3, 2.4, 0.3, '#55555c', 2.9, 0.3));
+    g.add(caja(6.6, 1.9, 0.35, ac, 0, 1.55, -0.05, 0.12));                   // marco con canto
+    var tx = textoTextura(o.texto || '', { color: ac, fondo: '#ffffff', tam: 92, logo: o.logo });
+    var mb = mat('#ffffff');
+    var m = new T.Mesh(geoCaja(6, 1.5, 0.1, 0.04), [mb, mb, mb, mb, new T.MeshStandardMaterial({ map: tx }), mb]);
+    m.position.set(0, 1.75, 0.14); m.castShadow = true; g.add(m);
     return g;
   };
 
@@ -635,7 +698,7 @@
     if (c && p.o.carga != null) {
       // La mercancía no desaparece: al descargar queda un palé en el suelo; al cargar se recoge el que haya cerca.
       var donde = this.puntoCarga();
-      if (p.o.carga) recoger(donde); else if (c.visible) dejar(donde, this.obj.rotation.y);
+      if (p.o.carga) recoger(donde); else if (c.visible && !p.o.guardar) dejar(donde, this.obj.rotation.y);
       c.visible = !!p.o.carga;
     }
   };
@@ -670,7 +733,7 @@
   // ---------- construcción ----------
   function construir() {
     est = mundo.estilo || {};
-    var campo = new T.Mesh(new T.CircleGeometry(900, 48), new T.MeshStandardMaterial({ color: est.campo || est.cesped || '#e2c47a', roughness: 1 }));
+    var campo = new T.Mesh(new T.CircleGeometry(900, 48), new T.MeshStandardMaterial({ color: est.campo || est.cesped || '#e2c47a', roughness: 1, map: texturaHierba(160) }));
     campo.rotation.x = -Math.PI / 2; campo.position.y = -0.02; campo.receiveShadow = true; escena.add(campo);
     var suelo = plano(mundo.suelo.ancho, mundo.suelo.fondo, est.suelo || '#efe9df', 0, 0, 0);
     escena.add(suelo);
@@ -682,12 +745,13 @@
       lm.scale.set(40 + azL() * 40, 10 + azL() * 16, 30 + azL() * 20); lm.position.set(Math.cos(ang) * rad, -1, Math.sin(ang) * rad); lm.rotation.y = -ang;
       escena.add(lm);
     }
+    if (mundo.entorno !== false) entorno();
     var azE = SL.azar(55); // encinas sueltas por el campo
     for (var ei = 0; ei < 60; ei++) {
       var ea = azE() * Math.PI * 2, er = 75 + azE() * 130, en = P.arbol({ especie: azE() < 0.6 ? 'encina' : 'olivo' }, azE);
       en.position.set(Math.cos(ea) * er * 1.3, 0, Math.sin(ea) * er); en.scale.setScalar(1.2 + azE() * 0.6); escena.add(en);
     }
-    (mundo.cesped || []).forEach(function (c) { escena.add(plano(c[2] - c[0], c[3] - c[1], est.cesped || '#cfe0c4', (c[0] + c[2]) / 2, 0.015, (c[1] + c[3]) / 2)); });
+    (mundo.cesped || []).forEach(function (c) { var pc = plano(c[2] - c[0], c[3] - c[1], est.cesped || '#cfe0c4', (c[0] + c[2]) / 2, 0.015, (c[1] + c[3]) / 2); pc.material.map = texturaHierba(8); escena.add(pc); });
     (mundo.carreteras || []).forEach(function (c) {
       var dx = c[2] - c[0], dz = c[3] - c[1], largo = Math.sqrt(dx * dx + dz * dz), ancho = c[4] || 8;
       var m = plano(ancho, largo, est.asfalto || '#d6d3cd', (c[0] + c[2]) / 2, 0.02, (c[1] + c[3]) / 2); m.rotation.z = -Math.atan2(dx, dz); escena.add(m);
@@ -726,6 +790,48 @@
     anillo.rotation.x = -Math.PI / 2; anillo.visible = false; anillo.renderOrder = 5; escena.add(anillo);
   }
 
+  // ---------- alrededores (fondo con poco peso visual) ----------
+  function entorno() {
+    var az = SL.azar(404), palido = function (c) { return mat(c); };
+    // campos de cultivo (vegas del Guadiana): franjas de surcos
+    [[-120, -90, 70, 50, '#c7cf9a'], [110, -95, 80, 45, '#d9c58a'], [-150, 40, 60, 40, '#b9c690'], [150, 60, 70, 50, '#cfc08e'], [0, -130, 90, 40, '#c2cc96']].forEach(function (f) {
+      var c = document.createElement('canvas'); c.width = 64; c.height = 64; var x = c.getContext('2d');
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, 64, 64); x.fillStyle = 'rgba(0,0,0,.12)'; for (var k = 0; k < 64; k += 8) x.fillRect(0, k, 64, 3);
+      var t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(1, f[3] / 3);
+      var m = new T.Mesh(new T.PlaneGeometry(f[2], f[3]), new T.MeshStandardMaterial({ color: f[4], map: t, roughness: 1 }));
+      m.rotation.x = -Math.PI / 2; m.rotation.z = az() * 0.6; m.position.set(f[0], 0.01, f[1]); m.receiveShadow = true; escena.add(m);
+    });
+    // Santa Aurelia a lo lejos: casitas blancas con tejado de teja apagado
+    for (var i = 0; i < 22; i++) {
+      var hx = -150 + (az() - 0.5) * 50, hz = -150 + (az() - 0.5) * 40, w = 4 + az() * 3, h = 3 + az() * 2;
+      var casa = new T.Group(); casa.add(caja(w, h, 4, '#f3efe8', 0, 0, 0, 0.1));
+      var tj = caja(w + 0.4, 0.8, 4.4, '#c99b85', 0, h, 0, 0.2); casa.add(tj);
+      casa.position.set(hx, 0, hz); casa.rotation.y = az() * 3; escena.add(casa);
+    }
+    var torre = cilindro(1.2, 1.4, 12, '#efe8dc', -150, 0, -150); escena.add(torre);
+    // otra nave industrial lejos, gris
+    var nave2 = caja(30, 7, 18, '#d6d6d2', 160, 0, -120, 0.2); escena.add(nave2); escena.add(caja(31, 0.4, 19, '#bfc3c6', 160, 7, -120));
+    // ovejas pastando (se mueven despacio)
+    var ovejas = [];
+    for (var o = 0; o < 14; o++) {
+      var ov = new T.Group(), cuerpo = esfera(0.7, '#f4f1ea', 0, 0.8, 0); cuerpo.scale.set(1.3, 0.9, 0.9); ov.add(cuerpo);
+      ov.add(esfera(0.3, '#3a3330', 0.9, 0.95, 0));
+      [[-0.4, -0.25], [0.4, -0.25], [-0.4, 0.25], [0.4, 0.25]].forEach(function (p) { ov.add(caja(0.1, 0.45, 0.1, '#3a3330', p[0], 0, p[1])); });
+      var cx = -95 + az() * 30, cz = 60 + az() * 25; ov.position.set(cx, 0, cz); ov.rotation.y = az() * 6;
+      ov.userData = { cx: cx, cz: cz, f: az() * 6 }; escena.add(ov); ovejas.push(ov);
+    }
+    // tractor que trabaja el campo de ida y vuelta
+    var tr = new T.Group();
+    tr.add(caja(1.6, 1.2, 2.6, '#7a9a5a', 0, 0.6, 0, 0.15)); tr.add(caja(1.3, 1.1, 1.2, '#7a9a5a', 0, 1.8, 0.4, 0.1));
+    var rg = cilindro(0.8, 0.8, 0.4, '#2a2a2e', 0.95, 0.8, 0.7, 12); rg.rotation.z = Math.PI / 2; rg.position.y = 0.8; tr.add(rg);
+    var rg2 = rg.clone(); rg2.position.x = -0.95; tr.add(rg2);
+    escena.add(tr);
+    animables.push(function (t) {
+      ovejas.forEach(function (ov) { var u = ov.userData; ov.position.x = u.cx + Math.sin(t * 0.05 + u.f) * 3; ov.position.z = u.cz + Math.cos(t * 0.04 + u.f) * 2; ov.rotation.y = t * 0.05 + u.f; });
+      var k = (t * 0.02) % 2, d = k < 1 ? k : 2 - k; tr.position.set(-140 + d * 60, 0, -95); tr.rotation.y = k < 1 ? Math.PI / 2 : -Math.PI / 2;
+    });
+  }
+
   // ---------- cámara de maqueta ----------
   function aplicarCamara() {
     var c = camEstado;
@@ -755,7 +861,9 @@
     return modo2D;
   };
   M.es2D = function () { return modo2D; };
-  var DMIN = 24, DMAX = 110; // zoom: ni dentro de una caja ni perdido en el horizonte
+  var DMIN = 24, DMAX = 110, EMIN = 0.32, EMAX = 1.3, zoomU = 1;
+  // Distancia según la inclinación: al bajar la vista la cámara se acerca y al subirla se aleja (como el encuadre de Cubic).
+  function distEl(e) { var c = mundo.camaraInicial; return c.dist * (0.7 + 0.3 * Math.sin(e)) / (0.7 + 0.3 * Math.sin(c.el)); } // zoom: ni dentro de una caja ni perdido en el horizonte
   function controles() {
     var el = render.domElement, arr = null, movido = 0;
     el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
@@ -770,28 +878,39 @@
       var dx = e.clientX - arr.x, dy = e.clientY - arr.y; arr.x = e.clientX; arr.y = e.clientY;
       movido += Math.abs(dx) + Math.abs(dy);
       if (movido < 4) return;
-      if (vuelo || !meta) meta = Object.assign({}, camEstado);
+      if (vuelo || !meta) { meta = Object.assign({}, camEstado); zoomU = camEstado.dist / distEl(camEstado.el); }
       vuelo = null; siguiendo = null;
-      if (arr.girar && !modo2D) {
-        meta.az -= dx * 0.005;
-        meta.el = Math.min(1.3, Math.max(0.3, meta.el + dy * 0.003));
+      if (arr.girar && modo2D) { M.vista2D(false); if (M.alCambiarVista) M.alCambiarVista(false); arr = null; return; } // como en Cubic: arrastrar en 2D pasa a 3D
+      if (arr.girar) {
+        meta.az -= dx * 0.006; arr.vaz = -dx * 0.006;
+        // elevación con tope blando (se estira un poco y vuelve) y el encuadre se acerca o aleja con ella
+        var fuera = meta.el > EMAX || meta.el < EMIN;
+        meta.el += dy * 0.0045 * (fuera ? 0.3 : 1);
+        meta.el = Math.max(EMIN - 0.12, Math.min(EMAX + 0.12, meta.el));
+        meta.dist = distEl(meta.el) * zoomU;
       } else {
         var k = meta.dist * 0.0016, s = Math.sin(meta.az), c = Math.cos(meta.az);
         meta.x -= (dx * c + dy * s) * k;
         meta.z -= (-dx * s + dy * c) * k;
         var lim = mundo.limite || 16;
-        meta.x = Math.max(-lim, Math.min(lim, meta.x)); meta.z = Math.max(-lim, Math.min(lim, meta.z));
+        var lx = Math.max(lim, Math.abs(camEstado.x)), lz = Math.max(lim, Math.abs(camEstado.z));
+        meta.x = Math.max(-lx, Math.min(lx, meta.x)); meta.z = Math.max(-lz, Math.min(lz, meta.z));
       }
     });
     el.addEventListener('pointerup', function (e) {
       if (arr && movido < 6) tocar(e);
+      if (arr && meta && movido >= 6) { // inercia suave al soltar y vuelta del tope blando
+        if (arr.vaz) meta.az += arr.vaz * 8;
+        meta.el = Math.max(EMIN, Math.min(EMAX, meta.el)); meta.dist = distEl(meta.el) * zoomU;
+      }
       arr = null;
     });
     el.addEventListener('wheel', function (e) {
       e.preventDefault();
-      if (vuelo || !meta) meta = Object.assign({}, camEstado);
+      if (vuelo || !meta) { meta = Object.assign({}, camEstado); zoomU = camEstado.dist / distEl(camEstado.el); }
       vuelo = null;
-      meta.dist = Math.min(DMAX, Math.max(DMIN, meta.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+      zoomU = Math.min(DMAX / distEl(meta.el), Math.max(DMIN / distEl(meta.el), zoomU * (1 + Math.sign(e.deltaY) * 0.1)));
+      meta.dist = distEl(meta.el) * zoomU;
     }, { passive: false });
   }
   M.zoom = function (f) { M.volarA({ dist: Math.min(DMAX, Math.max(DMIN, camEstado.dist * f)) }, 0.4); };
@@ -832,7 +951,7 @@
   M.elementos = function () { return elementos; };
   // Al cerrar la ficha se vuelve a la vista de antes.
   M.volver = function () { var c = camAntes; camAntes = null; M.seleccionar(null); if (c) M.volarA(c, 1.0); };
-  M.seleccionar = function (obj, f) {
+  M.seleccionar = function (obj, f, viajar) {
     if (obj && !seleccion && !camAntes) camAntes = Object.assign({}, camEstado);
     if (!obj) siguiendo = null;
     seleccion = obj ? { obj: obj, ficha: f } : null;
@@ -840,7 +959,7 @@
     if (obj) {
       var p = new T.Vector3(); obj.getWorldPosition(p);
       var veh = f.tipo === 'vehiculo';
-      M.volarA({ x: p.x, z: p.z, dist: veh ? 26 : Math.max(camEstado.dist * 0.6, 24) }, 1.1, function () { if (veh) siguiendo = obj; });
+      if (viajar) M.volarA({ x: p.x, z: p.z, dist: veh ? 26 : Math.max(camEstado.dist * 0.6, 24) }, 1.1, function () { if (veh) siguiendo = obj; });
       var esc = f.anillo || (veh ? (f.vehiculo.def.tipo === 'camion' ? 3 : 1.3) : 2);
       anillo.scale.setScalar(esc);
     }

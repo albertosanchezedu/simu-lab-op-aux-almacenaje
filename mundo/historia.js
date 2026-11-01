@@ -20,9 +20,9 @@
         gestos: { explica: 'ALB_01', senala: 'ALB_02', pulgar: 'ALB_03', pensativo: 'ALB_04', ojo: 'ALB_05', celebra: 'ALB_06', cuaderno: 'ALB_01' }
       },
       maria: {
-        // Cuando lleguen sus PNG: gestos: { explica: 'MAR_01', senala: 'MAR_02', preocupada: 'MAR_03', piensa: 'MAR_04', cuaderno: 'MAR_05', celebra: 'MAR_06' }
         nombre: 'María', etiqueta: 'Serenitos',
-        color: '#e3a83f', pelo: '#4a3226', gestos: null
+        color: '#e3a83f', pelo: '#4a3226', gestoBase: 'explica',
+        gestos: { explica: 'MAR_01', senala: 'MAR_02', preocupada: 'MAR_03', piensa: 'MAR_04', pensativo: 'MAR_04', cuaderno: 'MAR_05', celebra: 'MAR_06', pulgar: 'MAR_06', ojo: 'MAR_02' }
       }
     },
 
@@ -31,9 +31,12 @@
       { quien: 'alberto', gesto: 'senala', texto: 'Se llama **Serenitos**. Hacen crema de queso de oveja en Santa Aurelia.' },
       { quien: 'maria', texto: '¡Hola! Soy María. Tengo 21 años.' },
       { quien: 'maria', texto: 'La receta es de mi abuela Manuela. Mi madre, Carmen, montó esta nave.' },
-      { quien: 'maria', texto: 'Mi madre se jubila. Ahora la nave es cosa mía.' },
-      { quien: 'maria', texto: 'Un supermercado quiere nuestros tarritos en **40 tiendas**.' },
-      { quien: 'maria', texto: 'Hay que hacer 10 veces más. Y mi almacén… es un caos.' },
+      { quien: 'maria', gesto: 'piensa', texto: 'Mi madre se jubila. Ahora la nave es cosa mía.' },
+      { quien: 'maria', gesto: 'celebra', texto: 'Un supermercado quiere nuestros tarritos en **40 tiendas**.' },
+      { quien: 'maria', gesto: 'preocupada', texto: 'Hay que hacer 10 veces más. Y mi almacén… es un caos.' },
+      { quien: 'maria', gesto: 'senala', texto: 'Ojo con la **temperatura**. La leche llega fría, a **4 °C**.' },
+      { quien: 'maria', texto: 'La crema recién hecha reposa un día en la **cámara de frío**, a **3 °C**.' },
+      { quien: 'maria', gesto: 'cuaderno', texto: 'Ya en su tarrito cerrado, aguanta en el almacén a **temperatura ambiente**.' },
       { quien: 'alberto', gesto: 'pensativo', texto: 'Vosotros sois la consultora. Vamos a ayudar a María.' }
     ],
 

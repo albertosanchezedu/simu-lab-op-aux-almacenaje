@@ -661,19 +661,41 @@ body:has(.sl-pantalla) .sl-ayuda, body:has(.sl-pantalla) .sl-creditos { z-index:
 .sl-vista button[aria-pressed="true"] { background: transparent; }
 .sl-vista::before { content: ''; position: absolute; z-index: 0; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 4px); border-radius: var(--rp); background: var(--text); transition: transform .35s var(--suave); }
 .sl-vista:has([data-vista="3d"][aria-pressed="true"])::before { transform: translateX(calc(100% + 2px)); }
-.sl-ver { top: 12px; right: 128px; }
+.sl-nombres { top: 56px; right: 12px; display: inline-flex; align-items: center; gap: 7px; border: 0; padding: 5px 11px 5px 6px; border-radius: var(--rp); background: #ffffffcc; color: var(--muted); font: 700 12px/1.2 var(--f-texto); cursor: pointer; }
+.sl-switch { position: relative; width: 28px; height: 16px; border-radius: 99px; background: #c9c5d6; transition: background .25s var(--suave); flex: none; }
+.sl-switch i { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform .25s var(--suave); }
+.sl-nombres[aria-pressed="true"] { color: var(--text); }
+.sl-nombres[aria-pressed="true"] .sl-switch { background: var(--sl-acento); }
+.sl-nombres[aria-pressed="true"] .sl-switch i { transform: translateX(12px); }
+.sl-dianoche { top: 92px; right: 12px; border: 0; padding: 0; background: none; cursor: pointer; }
+.sl-dianoche__pista { position: relative; display: block; width: 60px; height: 28px; border-radius: 99px; background: linear-gradient(180deg, #9fd0f2, #d9eefc); box-shadow: inset 0 1px 3px #0002, 0 2px 8px #0000001a; transition: background .5s var(--suave); overflow: hidden; }
+.sl-dianoche__bola { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #ffd34d; box-shadow: 0 0 10px #ffd34daa; transition: transform .5s var(--suave), background .5s ease, box-shadow .5s ease; }
+.sl-dianoche__sol, .sl-dianoche__luna { position: absolute; top: 50%; transform: translateY(-50%); font-size: 13px; line-height: 1; transition: opacity .4s ease; }
+.sl-dianoche__sol { right: 8px; color: #fff; opacity: 0; }
+.sl-dianoche__luna { right: 9px; color: #2e2363; opacity: .55; }
+.sl-dianoche[aria-pressed="true"] .sl-dianoche__pista { background: linear-gradient(180deg, #1d2438, #3a3f7a); }
+.sl-dianoche[aria-pressed="true"] .sl-dianoche__bola { transform: translateX(32px); background: #eef0ff; box-shadow: inset -6px -2px 0 #c9cde8, 0 0 10px #ffffff66; }
+.sl-dianoche[aria-pressed="true"] .sl-dianoche__luna { opacity: 0; }
+.sl-dianoche[aria-pressed="true"] .sl-dianoche__sol { left: 9px; right: auto; opacity: .8; content: ''; }
 .sl-zoom { right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
 .sl-redondo { width: 38px; height: 38px; border: 0; border-radius: 50%; display: grid; place-items: center; background: #ffffffe6; color: var(--text); cursor: pointer; box-shadow: 0 2px 8px #0000001a; transition: transform .15s ease; }
 .sl-redondo:hover { transform: scale(1.06); }
-.sl-explorar { top: 12px; left: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-height: calc(100% - 24px); }
-.sl-explorar__abrir { background: #ffffffe6; height: 34px; padding: 0 14px; font-size: 13px; }
-.sl-explorar__lista { width: 230px; overflow-y: auto; padding: 8px; background: #fffffff2; border-radius: 16px; }
-.sl-explorar__grupo { margin: 8px 6px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.sl-explorar__item { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 10px; border-radius: 10px; font: 600 13.5px/1.25 var(--f-texto); color: var(--text); cursor: pointer; }
-.sl-explorar__item:hover { background: var(--line); }
-.sl-app--capitulo .sl-explorar, .sl-app--capitulo .sl-ver { display: none; }
+.sl-explorar { top: 12px; left: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-height: calc(100% - 24px); }
+.sl-explorar__abrir { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 16px; border: 0; border-radius: var(--rp); background: #ffffffe6; color: var(--text); font: 700 13.5px/1 var(--f-texto); cursor: pointer; box-shadow: 0 2px 8px #0000001a; transition: background .2s ease, color .2s ease; }
+.sl-explorar__abrir[aria-expanded="true"] { background: var(--text); color: #fff; }
+.sl-explorar__lista { display: flex; align-items: flex-start; gap: 8px; min-height: 0; max-height: 100%; }
+.sl-explorar__col { width: 210px; max-height: 100%; overflow-y: auto; padding: 6px; border-radius: 18px; animation: sl-desplegar .28s var(--suave) both; }
+.sl-explorar__col--2 { animation-name: sl-desplegar-der; }
+.sl-explorar__item { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 9px 12px; border-radius: 12px; font: 600 13.5px/1.25 var(--f-texto); color: var(--text); cursor: pointer; animation: sl-desplegar .25s var(--suave) both; }
+.sl-explorar__item i { font-style: normal; color: var(--muted); font-size: 16px; }
+.sl-explorar__item:hover { background: #ffffff99; }
+.sl-explorar__item--on { background: var(--sl-acento); color: #fff; }
+.sl-explorar__item--on i { color: #fff; }
+@keyframes sl-desplegar { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes sl-desplegar-der { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+.sl-app--capitulo .sl-explorar, .sl-app--capitulo .sl-nombres, .sl-app--capitulo .sl-dianoche { display: none; }
 .sl-ficha__datos { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
 .sl-ficha__datos li { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 4px; }
 .sl-ficha__datos span { color: var(--muted); }
 .sl-ficha__volver { pointer-events: auto; margin-top: 12px; width: 100%; height: 36px; font-size: 13.5px; }
-@media (max-width: 760px) { .sl-ver { top: 52px; right: 12px; } .sl-explorar__lista { width: 200px; } }
+@media (max-width: 760px) { .sl-explorar__col { width: 170px; } }

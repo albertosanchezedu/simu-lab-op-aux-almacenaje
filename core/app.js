@@ -232,41 +232,51 @@
       var b = e.target.closest('button'); if (!b) return;
       if (b.dataset.z === 'mas') M3.zoom(0.8); else if (b.dataset.z === 'menos') M3.zoom(1.25); else { M3.seleccionar(null); M3.inicio(1); }
     };
-    var ver = SL.el('div', 'sl-seg sl-ver sl-mando',
-      '<button type="button" data-v="nombres" aria-pressed="false">Nombres</button><button type="button" data-v="noche" aria-pressed="false" aria-label="Día o noche">☾</button>');
-    ver.onclick = function (e) {
-      var b = e.target.closest('button'); if (!b) return;
-      if (b.dataset.v === 'nombres') { nombres = !nombres; M3.verGrupo('zona', nombres && !enCapitulo); b.setAttribute('aria-pressed', String(nombres)); }
-      else { var n = M3.noche(); b.setAttribute('aria-pressed', String(n)); b.textContent = n ? '☀' : '☾'; }
-    };
+    // «Nombres» como en Cubic Lab: interruptor debajo de 2D/3D
+    var nom = SL.el('button', 'sl-nombres sl-mando', '<span class="sl-switch"><i></i></span>Nombres'); nom.type = 'button'; nom.setAttribute('aria-pressed', 'false');
+    nom.onclick = function () { nombres = !nombres; M3.verGrupo('zona', nombres && !enCapitulo); nom.setAttribute('aria-pressed', String(nombres)); };
+    M3.alCambiarVista = function (es2) { vista.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String((x.dataset.vista === '2d') === es2)); }); };
     var exp = SL.el('div', 'sl-explorar sl-mando',
-      '<button type="button" class="sl-btn sl-explorar__abrir" aria-expanded="false">☰ Explorar</button><div class="sl-explorar__lista sl-cristal" hidden></div>');
+      '<button type="button" class="sl-explorar__abrir" aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span>Explorar</span></button><div class="sl-explorar__lista" hidden></div>');
     exp.querySelector('.sl-explorar__abrir').onclick = function () { var l = exp.querySelector('.sl-explorar__lista'); l.hidden ? abrirExplorar() : cerrarExplorar(); };
-    [vista, zoom, ver, exp].forEach(function (n) { esc.appendChild(n); });
+    [vista, nom, zoom, exp].forEach(function (n) { esc.appendChild(n); });
   }
-  // Grupos para moverse por lo que hay en el mapa
+  // Explorar: menú que se despliega por pasos hacia la derecha (categoría › elemento).
+  var ORDEN = ['Edificios y zonas', 'Dentro de la nave', 'Camiones', 'Máquinas', 'Personas'];
   function grupoDe(f) {
     if (f.tipo === 'vehiculo') { var t = f.vehiculo.def.tipo; return t === 'camion' ? 'Camiones' : t === 'persona' ? 'Personas' : t === 'coche' ? null : 'Máquinas'; }
     return f.grupo || 'Edificios y zonas';
   }
-  function abrirExplorar() {
-    var l = $('.sl-explorar__lista'), grupos = {}, orden = ['Edificios y zonas', 'Dentro de la nave', 'Camiones', 'Máquinas', 'Personas'], vistos = {};
+  function grupos() {
+    var gs = {}, vistos = {};
     M3.elementos().forEach(function (e) {
-      var g = grupoDe(e.ficha); if (!g) return;
-      var clave = g + e.ficha.nombre; if (vistos[clave]) return; vistos[clave] = 1;
-      (grupos[g] = grupos[g] || []).push(e);
+      var g = grupoDe(e.ficha); if (!g || vistos[g + e.ficha.nombre]) return;
+      vistos[g + e.ficha.nombre] = 1; (gs[g] = gs[g] || []).push(e);
     });
-    l.innerHTML = '';
-    orden.forEach(function (g) {
-      if (!grupos[g]) return;
-      l.appendChild(SL.el('p', 'sl-explorar__grupo', g));
-      grupos[g].forEach(function (e) {
-        var b = SL.el('button', 'sl-explorar__item', e.ficha.nombre); b.type = 'button';
-        b.onclick = function () { M3.seleccionar(e.obj, e.ficha); };
-        l.appendChild(b);
-      });
+    return gs;
+  }
+  function abrirExplorar() {
+    var cont = $('.sl-explorar__lista'), gs = grupos();
+    cont.innerHTML = '';
+    var col1 = SL.el('div', 'sl-explorar__col sl-cristal'), col2 = SL.el('div', 'sl-explorar__col sl-explorar__col--2 sl-cristal');
+    col2.hidden = true;
+    ORDEN.forEach(function (g) {
+      if (!gs[g]) return;
+      var b = SL.el('button', 'sl-explorar__item', '<span>' + g + '</span><i>›</i>'); b.type = 'button';
+      b.onclick = function () {
+        col1.querySelectorAll('.sl-explorar__item').forEach(function (x) { x.classList.toggle('sl-explorar__item--on', x === b); });
+        col2.innerHTML = ''; col2.hidden = false;
+        gs[g].forEach(function (e, n) {
+          var it = SL.el('button', 'sl-explorar__item', '<span>' + e.ficha.nombre + '</span>'); it.type = 'button';
+          it.style.animationDelay = (n * 0.03) + 's';
+          it.onclick = function () { M3.seleccionar(e.obj, e.ficha, true); };
+          col2.appendChild(it);
+        });
+      };
+      col1.appendChild(b);
     });
-    l.hidden = false; $('.sl-explorar__abrir').setAttribute('aria-expanded', 'true');
+    cont.appendChild(col1); cont.appendChild(col2);
+    cont.hidden = false; $('.sl-explorar__abrir').setAttribute('aria-expanded', 'true');
   }
   function cerrarExplorar() { var l = $('.sl-explorar__lista'); if (l) { l.hidden = true; $('.sl-explorar__abrir').setAttribute('aria-expanded', 'false'); } }
 
