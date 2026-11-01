@@ -23,6 +23,7 @@
     });
   }
   function donde(html, k, n) {
+    $('.sl-donde').style.visibility = n ? '' : 'hidden'; // en la pantalla principal no hay barra
     $('#sl-donde').innerHTML = html;
     $('#sl-donde-barra').style.width = (n ? Math.round(100 * k / n) : 0) + '%';
   }
@@ -74,11 +75,11 @@
     enCapitulo = false;
     $('#sl-app').classList.remove('sl-app--capitulo');
     cerrarHoja(); lamina(null);
-    M3.modoTocarZonas(null); M3.limpiarZonas(); M3.seleccionar(null); M3.verGrupo('zona', false); M3.verGrupo('unidad', true);
+    M3.modoTocarZonas(null); M3.limpiarZonas(); M3.seleccionar(null); M3.verGrupo('zona', nombres); M3.verGrupo('unidad', true);
     M3.inicio(1.4);
     var hechos = 0, total = 0;
     Object.keys(SL.unidades).forEach(function (k) { SL.unidades[k].misiones.forEach(function (m) { if (!m.proximamente) { total++; if (hecha(m.id)) hechos++; } }); });
-    donde('<strong>La nave de ' + SL.mundo.nombre + '</strong>', hechos, total);
+    donde('', 0, 0);
     SL.Guia.decir([H.mapa.bienvenida, H.mapa.girar]);
   }
 
@@ -139,7 +140,7 @@
   function correr(uni, m) {
     enCapitulo = true;
     $('#sl-app').classList.add('sl-app--capitulo');
-    M3.verGrupo('unidad', false); M3.verGrupo('zona', false); M3.limpiarZonas(); M3.seleccionar(null);
+    M3.verGrupo('unidad', false); M3.verGrupo('zona', false); M3.limpiarZonas(); M3.seleccionar(null); cerrarExplorar();
     var e = SL.progreso.mision(m.id);
     if (e.hecha || !e.paso) { e.paso = 0; e.intento = { preguntas: 0, primera: 0 }; }
     e.intento = e.intento || { preguntas: 0, primera: 0 };
@@ -201,9 +202,73 @@
     var el = $('#sl-ficha');
     if (!f || enCapitulo) { el.hidden = true; return; }
     el.hidden = false;
-    el.innerHTML = '<button type="button" class="sl-ficha__cerrar" aria-label="Cerrar">×</button><p class="sl-ficha__titulo">' + f.nombre + '</p><p style="margin:0;font-size:14px">' + (f.texto || '') + '</p>';
-    el.querySelector('button').onclick = function () { M3.seleccionar(null); };
+    var datos = (f.datos || []).map(function (d) { return '<li><span>' + d[0] + '</span><b>' + d[1] + '</b></li>'; }).join('');
+    el.innerHTML = '<button type="button" class="sl-ficha__cerrar" aria-label="Cerrar">×</button><p class="sl-ficha__titulo">' + f.nombre + '</p><p style="margin:0;font-size:14px">' + (f.texto || '') + '</p>' +
+      (datos ? '<ul class="sl-ficha__datos">' + datos + '</ul>' : '') +
+      '<button type="button" class="sl-btn sl-ficha__volver">← Volver a la vista</button>';
+    el.querySelector('.sl-ficha__cerrar').onclick = el.querySelector('.sl-ficha__volver').onclick = function () { M3.volver(); };
   }
+
+  // ---------- mandos del mapa: 2D/3D, nombres, día/noche, zoom y explorar ----------
+  var nombres = false;
+  var ICO = {
+    mas: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    menos: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    casa: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>'
+  };
+  function mandos() {
+    var esc = $('#sl-escenario');
+    var vista = SL.el('div', 'sl-seg sl-vista sl-mando', '<button type="button" data-vista="2d" aria-pressed="false">2D</button><button type="button" data-vista="3d" aria-pressed="true">3D</button>');
+    vista.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var es2 = M3.vista2D(b.dataset.vista === '2d');
+      vista.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String((x.dataset.vista === '2d') === es2)); });
+    };
+    var zoom = SL.el('div', 'sl-zoom sl-mando',
+      '<button type="button" class="sl-redondo" data-z="mas" aria-label="Acercar">' + ICO.mas + '</button>' +
+      '<button type="button" class="sl-redondo" data-z="menos" aria-label="Alejar">' + ICO.menos + '</button>' +
+      '<button type="button" class="sl-redondo" data-z="casa" aria-label="Ver todo">' + ICO.casa + '</button>');
+    zoom.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.z === 'mas') M3.zoom(0.8); else if (b.dataset.z === 'menos') M3.zoom(1.25); else { M3.seleccionar(null); M3.inicio(1); }
+    };
+    var ver = SL.el('div', 'sl-seg sl-ver sl-mando',
+      '<button type="button" data-v="nombres" aria-pressed="false">Nombres</button><button type="button" data-v="noche" aria-pressed="false" aria-label="Día o noche">☾</button>');
+    ver.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.v === 'nombres') { nombres = !nombres; M3.verGrupo('zona', nombres && !enCapitulo); b.setAttribute('aria-pressed', String(nombres)); }
+      else { var n = M3.noche(); b.setAttribute('aria-pressed', String(n)); b.textContent = n ? '☀' : '☾'; }
+    };
+    var exp = SL.el('div', 'sl-explorar sl-mando',
+      '<button type="button" class="sl-btn sl-explorar__abrir" aria-expanded="false">☰ Explorar</button><div class="sl-explorar__lista sl-cristal" hidden></div>');
+    exp.querySelector('.sl-explorar__abrir').onclick = function () { var l = exp.querySelector('.sl-explorar__lista'); l.hidden ? abrirExplorar() : cerrarExplorar(); };
+    [vista, zoom, ver, exp].forEach(function (n) { esc.appendChild(n); });
+  }
+  // Grupos para moverse por lo que hay en el mapa
+  function grupoDe(f) {
+    if (f.tipo === 'vehiculo') { var t = f.vehiculo.def.tipo; return t === 'camion' ? 'Camiones' : t === 'persona' ? 'Personas' : t === 'coche' ? null : 'Máquinas'; }
+    return f.grupo || 'Edificios y zonas';
+  }
+  function abrirExplorar() {
+    var l = $('.sl-explorar__lista'), grupos = {}, orden = ['Edificios y zonas', 'Dentro de la nave', 'Camiones', 'Máquinas', 'Personas'], vistos = {};
+    M3.elementos().forEach(function (e) {
+      var g = grupoDe(e.ficha); if (!g) return;
+      var clave = g + e.ficha.nombre; if (vistos[clave]) return; vistos[clave] = 1;
+      (grupos[g] = grupos[g] || []).push(e);
+    });
+    l.innerHTML = '';
+    orden.forEach(function (g) {
+      if (!grupos[g]) return;
+      l.appendChild(SL.el('p', 'sl-explorar__grupo', g));
+      grupos[g].forEach(function (e) {
+        var b = SL.el('button', 'sl-explorar__item', e.ficha.nombre); b.type = 'button';
+        b.onclick = function () { M3.seleccionar(e.obj, e.ficha); };
+        l.appendChild(b);
+      });
+    });
+    l.hidden = false; $('.sl-explorar__abrir').setAttribute('aria-expanded', 'true');
+  }
+  function cerrarExplorar() { var l = $('.sl-explorar__lista'); if (l) { l.hidden = true; $('.sl-explorar__abrir').setAttribute('aria-expanded', 'false'); } }
 
   // ---------- arranque ----------
   function empezar() {
@@ -225,7 +290,7 @@
     M3.margenDerecho = function () { return 0; };
     M3.iniciar($('#sl-lienzo'));
     M3.alSeleccionar(ficha);
-    crearPins();
+    crearPins(); mandos(); donde('', 0, 0);
     $('#sl-mapa').addEventListener('click', function () { if (!document.querySelector('.sl-pantalla')) irMapa(); });
     $('#sl-marca').addEventListener('click', function () { if (!document.querySelector('.sl-pantalla')) irMapa(); });
     SL.Guia.decir([{ quien: 'alberto', gesto: 'explica', texto: 'Cargando el almacén…' }], null, { espera: '…' });

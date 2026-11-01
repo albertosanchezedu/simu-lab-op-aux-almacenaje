@@ -11,7 +11,7 @@ Lee **README.md** antes de nada.
   - ayuda progresiva en 3 niveles, sin castigar; sin límites de tiempo;
   - todo se puede parar y retomar (progreso guardado por equipo).
 - **Personajes: el mínimo**. Solo Alberto y María. No inventar personajes nuevos: cada uno obliga a Alberto a crearlo. Si es imprescindible, pedirlo antes.
-- **Estructura del mundo**: World Prompt Pack (mundo, vida, interacción, paneles de cristal, extras). Maqueta low-poly que se note simulada, sin personas en el mundo.
+- **Estructura del mundo**: World Prompt Pack (mundo, vida, interacción, paneles de cristal, extras). Maqueta low-poly que se note simulada. Personas mini (estilo Cubic, sin cara) con ropa de seguridad: chaleco, botas y casco.
 - **Look**: el MISMO marco que Cubic Lab (portada, barra solo con «SimuLab», escenario, panel del personaje, pie, «?» y copyright iguales). Paleta de María y Serenitos: mostaza, blanco, frambuesa.
 - **Historia**: Serenitos (crema de queso de oveja). Carmen (madre) y Manuela (abuela) solo se nombran.
 - **Cada capítulo**: pantalla intermedia al entrar + teoría para copiar en el cuaderno (paso `cuaderno`) + preguntas.

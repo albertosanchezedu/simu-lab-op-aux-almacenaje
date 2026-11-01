@@ -11,10 +11,11 @@
   var T = window.THREE;
 
   var M = SL.Mundo3D = {};
+  var cielo = null, meta = null;
   var escena, camara, render, contenedor, reloj, luzSol, luzCielo, raycaster, puntero;
   var mundo, est;
   var zonas = {};          // id -> { def, mallas:[], centro, tam }
-  var tocables = [];       // mallas con userData.ficha
+  var tocables = [], elementos = [], camAntes = null;       // mallas con userData.ficha
   var vehiculos = [];
   var anclas = [];         // { el, pos:Vector3, siempre }
   var animables = [];      // funciones (t, dt)
@@ -81,11 +82,27 @@
     var x = c.getContext('2d');
     x.fillStyle = opc.fondo || '#ffffff'; x.fillRect(0, 0, c.width, c.height);
     x.fillStyle = opc.color || '#1c1c1f';
-    x.font = (opc.peso || 800) + ' ' + (opc.tam || 120) + 'px "Bricolage Grotesque Variable", system-ui, sans-serif';
+    var tam = opc.tam || 120, hueco = c.width * (opc.logo ? 0.62 : 0.88);
+    var fuente = function () { x.font = (opc.peso || 800) + ' ' + tam + 'px "Bricolage Grotesque Variable", system-ui, sans-serif'; };
+    fuente();
+    while (tam > 24 && x.measureText(texto).width > hueco) { tam -= 4; fuente(); }
     x.textAlign = 'center'; x.textBaseline = 'middle';
     x.fillText(texto, c.width / 2, c.height / 2 + 6);
     var t = new T.CanvasTexture(c); t.anisotropy = 4;
     if ('colorSpace' in t) t.colorSpace = 'srgb'; else t.encoding = T.sRGBEncoding;
+    if (opc.logo) { // logo a la izquierda y el texto a su lado
+      var im = new Image();
+      im.onload = function () {
+        var hL = c.height * 0.86, wL = hL * im.naturalWidth / im.naturalHeight, tw = x.measureText(texto).width, gap = c.height * 0.12;
+        var x0 = (c.width - (wL + gap + tw)) / 2;
+        x.fillStyle = opc.fondo || '#ffffff'; x.fillRect(0, 0, c.width, c.height);
+        x.drawImage(im, x0, (c.height - hL) / 2, wL, hL);
+        x.fillStyle = opc.color || '#1c1c1f'; x.textAlign = 'left';
+        x.fillText(texto, x0 + wL + gap, c.height / 2 + 6);
+        t.needsUpdate = true;
+      };
+      im.src = SL.recurso(opc.logo);
+    }
     return t;
   }
   function brillo(color) {
@@ -95,6 +112,7 @@
   function ficha(obj, f) {
     if (!f) return;
     obj.traverse(function (o) { if (o.isMesh) { o.userData.ficha = f; o.userData.raiz = obj; tocables.push(o); } });
+    elementos.push({ obj: obj, ficha: f });
     obj.userData.ficha = f;
   }
 
@@ -149,6 +167,12 @@
 
   P.camion = function (o) {
     var g = new T.Group(), color = o.color || '#ffffff';
+    if (o.cisterna) { // cisterna de leche: cilindro plateado con aros de color
+      var cis = new T.Mesh(new T.CylinderGeometry(1.25, 1.25, 7.2, 20), mat('#d9dde2', { metalness: 0.35, roughness: 0.35 }));
+      cis.rotation.x = Math.PI / 2; cis.position.set(0, 2.2, 1.4); cis.castShadow = true; g.add(cis);
+      [-1.6, 1.4, 4.4].forEach(function (z) { var a = new T.Mesh(new T.CylinderGeometry(1.29, 1.29, 0.25, 20), mat(o.cabina || est.acento)); a.rotation.x = Math.PI / 2; a.position.set(0, 2.2, z); g.add(a); });
+      g.add(caja(0.6, 0.25, 0.6, '#b9bec5', 0, 3.4, 1.4));
+    } else
     g.add(caja(2.4, 2.6, 7.6, color, 0, 0.9, 1.4, 0.12));                  // remolque
     g.add(caja(2.3, 0.35, 7.4, '#3a3a40', 0, 0.55, 1.4));                    // chasis
     g.add(caja(2.4, 2.2, 2.2, o.cabina || est.acento, 0, 0.7, -3.6, 0.35)); // cabina (mira a -z)
@@ -158,13 +182,14 @@
         var r = cilindro(0.48, 0.48, 0.38, '#26262b', x, 0.48, z, 14); r.rotation.z = Math.PI / 2; r.position.y = 0.48; g.add(r);
       });
     });
-    if (o.rotulo) {
-      var t = textoTextura(o.rotulo, { color: '#ffffff', fondo: o.cabinaRotulo || est.acento, tam: 96 });
+    if (o.rotulo && !o.cisterna) {
+      var t = textoTextura(o.rotulo, { color: '#ffffff', fondo: o.cabinaRotulo || est.acento, tam: 120, ancho: 1280, alto: 240 });
       [-1.21, 1.21].forEach(function (x) {
         var r = new T.Mesh(new T.PlaneGeometry(6.4, 1.2), new T.MeshStandardMaterial({ map: t, roughness: 0.8 }));
         r.position.set(x, 2.3, 1.4); r.rotation.y = x < 0 ? -Math.PI / 2 : Math.PI / 2; g.add(r);
       });
     }
+    var cond = P.persona({ sentado: true, semilla: o.semilla || 2, chaleco: true }); cond.position.set(0.5, 1.45, -3.75); g.add(cond);
     var faro = new T.Mesh(geoCaja(0.4, 0.2, 0.06), brillo('#fff3c4')); // faros
     [-0.8, 0.8].forEach(function (x) { var f = faro.clone(); f.position.set(x, 1.0, -4.72); g.add(f); });
     // carga visible cuando el camión va lleno
@@ -191,6 +216,7 @@
       var r = cilindro(0.26, 0.26, 0.22, '#26262b', p[0], 0.26, p[1], 12); r.rotation.z = Math.PI / 2; r.position.y = 0.26; g.add(r);
     });
     g.add(caja(0.18, 0.12, 0.18, '#ff8a2a', 0, 2.62, 0.7, 0.04));          // luz rotativa
+    var cond = P.persona({ sentado: true, casco: true, chaleco: true, semilla: (o.semilla || 1) + 3 }); cond.position.set(0, 1.35, 0.35); g.add(cond);
     var p = P.palet(true, SL.azar(o.semilla || 3)); p.position.set(0, 0.0, -1.45); p.rotation.y = Math.PI / 2;
     p.visible = false; horq.add(p); g.userData.carga = p; g.userData.horquillas = horq;
     return g;
@@ -204,8 +230,60 @@
     [-0.25, 0.25].forEach(function (x) { g.add(caja(0.18, 0.08, 1.15, '#55555c', x, 0.06, -0.55)); });
     var p = P.palet(true, SL.azar(o.semilla || 5)); p.position.set(0, 0.02, -0.55); p.rotation.y = Math.PI / 2;
     p.visible = false; g.add(p); g.userData.carga = p;
+    var op = P.persona({ chaleco: true, semilla: (o.semilla || 4) + 7 }); op.position.set(0, 0, 1.15); g.add(op); g.userData.operario = op;
     return g;
   };
+
+  // Persona "Memoji mini" (como en Cubic Lab), sin cara. En el almacén: chaleco reflectante y botas de seguridad.
+  var ROPA = { piel: ['#f1d0b5', '#e0b48e', '#b98559', '#7e5236'], pelo: ['#3a2a20', '#1f1b18', '#6b4a2e', '#b7863f'],
+    camiseta: ['#2f4fa3', '#2a2a2e', '#edeae3', '#8fac8b', '#c8463e'], pantalon: ['#2b2b30', '#3e5c8a', '#55565c'] };
+  function capsula(r, l) { var k = 'cap' + r + '|' + l; return geos[k] || (geos[k] = new T.CapsuleGeometry(r, l, 4, 10)); }
+  function pieza(g, geo, color, x, y, z) { var m = new T.Mesh(geo, typeof color === 'string' ? mat(color) : color); m.position.set(x || 0, y || 0, z || 0); m.castShadow = true; g.add(m); return m; }
+  P.persona = function (o) {
+    var k = o.semilla || 1, r = function (a, sal) { return a[(k * 7919 + sal * 104729) % a.length]; };
+    var piel = o.piel || r(ROPA.piel, 3), pelo = o.pelo || r(ROPA.pelo, 4), cam = o.camiseta || r(ROPA.camiseta, 1), pan = o.pantalon || r(ROPA.pantalon, 2);
+    var g = new T.Group(), cuerpo = new T.Group(); g.add(cuerpo);
+    var piernas = [], brazos = [];
+    [-1, 1].forEach(function (l) {
+      var cad = new T.Group(); cad.position.set(l * 0.1, 0.64, 0);
+      pieza(cad, capsula(0.085, 0.38), pan, 0, -0.27, 0);
+      pieza(cad, geoCaja(0.13, 0.1, 0.26, 0.04), '#2a2a2e', 0, -0.64, 0.04);   // botas
+      if (o.sentado) cad.rotation.x = -1.45;
+      cuerpo.add(cad); piernas.push(cad);
+    });
+    var torso = pieza(cuerpo, capsula(0.19, 0.3), cam, 0, 0.98, 0); torso.scale.z = 0.75;
+    if (o.chaleco !== false && (o.chaleco || o.casco)) {
+      var ch = pieza(cuerpo, capsula(0.197, 0.22), '#d6ec3a', 0, 0.97, 0); ch.scale.z = 0.78;
+      [0.88, 1.02].forEach(function (y) { var b = pieza(cuerpo, new T.CylinderGeometry(0.2, 0.2, 0.035, 14), '#eef0f2', 0, y, 0); b.scale.z = 0.78; });
+    }
+    [-1, 1].forEach(function (l) {
+      var hom = new T.Group(); hom.position.set(l * 0.2, 1.18, 0); hom.rotation.z = l * 0.18;
+      pieza(hom, capsula(0.055, 0.34), cam, 0, -0.2, 0);
+      pieza(hom, esferaGeo(0.06), piel, 0, -0.43, 0);
+      if (o.sentado) hom.rotation.x = -0.9;
+      cuerpo.add(hom); brazos.push(hom);
+    });
+    pieza(cuerpo, new T.CylinderGeometry(0.055, 0.06, 0.08, 10), piel, 0, 1.3, 0);
+    var cab = pieza(cuerpo, esferaGeo(0.17), piel, 0, 1.52, 0); cab.scale.set(1, 1.08, 0.96);
+    if (o.casco) {
+      pieza(cuerpo, new T.SphereGeometry(0.185, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), '#f2c230', 0, 1.56, 0);
+      pieza(cuerpo, new T.CylinderGeometry(0.22, 0.22, 0.02, 16), '#f2c230', 0, 1.56, 0.02);
+    } else {
+      var p = pieza(cuerpo, new T.SphereGeometry(0.178, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), pelo, 0, 1.54, -0.01); p.rotation.x = -0.25;
+    }
+    if (o.sentado) cuerpo.position.y = -0.62;
+    cuerpo.rotation.y = Math.PI; // como las demás piezas, mira a -z
+    g.userData.piernas = piernas; g.userData.brazos = brazos; g.userData.cuerpo = cuerpo;
+    return g;
+  };
+  function esferaGeo(rr) { var kk = 's' + rr; return geos[kk] || (geos[kk] = new T.SphereGeometry(rr, 14, 10)); }
+  function caminar(g, fase, parado) {
+    var u = g.userData; if (!u.piernas) return;
+    var s = parado ? 0 : Math.sin(fase);
+    u.piernas[0].rotation.x = s * 0.45; u.piernas[1].rotation.x = -s * 0.45;
+    u.brazos[0].rotation.x = -s * 0.4; u.brazos[1].rotation.x = s * 0.4;
+    u.cuerpo.position.y = parado ? 0 : Math.abs(Math.cos(fase)) * 0.04;
+  }
 
   P.coche = function (o) {
     var g = new T.Group();
@@ -219,11 +297,17 @@
   };
 
   P.arbol = function (o, azar) {
-    var g = new T.Group(), h = 2.2 + azar() * 1.8;
-    g.add(cilindro(0.16, 0.2, h * 0.45, '#9b7653'));
-    var k = azar() < 0.5;
-    if (k) { var s = esfera(1.0 + azar() * 0.5, est.arbol || '#8fac8b', 0, h * 0.55 + 0.6, 0); s.scale.y = 1.15; g.add(s); }
-    else { var cono = new T.Mesh(new T.ConeGeometry(1.1, h * 1.1, 9), mat(est.arbol2 || '#6f9a72')); cono.position.y = h * 0.4 + h * 0.55; cono.castShadow = true; g.add(cono); }
+    var g = new T.Group(), olivo = o.especie ? o.especie === 'olivo' : azar() < 0.55;
+    if (olivo) {
+      g.add(cilindro(0.22, 0.32, 1.3, '#8a7058'));
+      [[0, 1.9, 0, 1.15], [0.8, 1.6, 0.3, 0.8], [-0.7, 1.7, -0.3, 0.85]].forEach(function (p) {
+        var s = esfera(p[3] * (0.9 + azar() * 0.3), est.arbol || '#a3ad8c', p[0], p[1], p[2]); s.scale.y = 0.72; g.add(s);
+      });
+    } else {
+      var h = 1.6 + azar() * 0.8;
+      g.add(cilindro(0.2, 0.28, h, '#6e5643'));
+      var c = esfera(1.7 + azar() * 0.5, est.arbol2 || '#5e7a4c', 0, h + 1.1, 0); c.scale.y = 0.8; g.add(c);
+    }
     return g;
   };
 
@@ -260,23 +344,25 @@
         }
       }
       huecos.forEach(function (z) {
-        g.add(caja(e, h - 4.2, anchoH, muro, x, 4.4, z, 0.05));             // dintel
-        var puerta = caja(0.12, 0.6, anchoH - 0.2, '#b9bcc4', x, 3.75, z); g.add(puerta); // persiana enrollada
-        var s = lado === 'oeste' ? -1 : 1;
-        g.add(caja(1.4, 0.18, anchoH - 0.4, '#8c8f97', x + s * 0.7, 1.0, z)); // rampa niveladora
-        g.add(caja(0.3, 0.5, 0.35, '#2a2a2e', x + s * 0.25, 1.0, z - anchoH / 2 + 0.3));
-        g.add(caja(0.3, 0.5, 0.35, '#2a2a2e', x + s * 0.25, 1.0, z + anchoH / 2 - 0.3));
-        g.add(caja(1.6, 1.0, anchoH + 1, est.losa || '#ece7de', x + s * 0.8, 0, z)); // andén
-        var luz = new T.Mesh(geoCaja(0.3, 0.3, 0.3), brillo(est.acento)); luz.position.set(x + s * 0.2, 4.1, z + anchoH / 2 + 0.3); g.add(luz);
+        var s = lado === 'oeste' ? -1 : 1, xo = x + s * e / 2;
+        g.add(caja(e, h - 3.8, anchoH, muro, x, 4.0, z, 0.05));             // dintel
+        g.add(caja(0.14, 1.4, anchoH - 0.3, est.acento, x + s * 0.05, 2.6, z)); // puerta seccional medio abierta
+        // abrigo de muelle: marco acolchado oscuro que abraza la trasera del camión
+        g.add(caja(0.7, 4.0, 0.4, '#4a4a52', xo + s * 0.35, 0, z - anchoH / 2 - 0.1, 0.08));
+        g.add(caja(0.7, 4.0, 0.4, '#4a4a52', xo + s * 0.35, 0, z + anchoH / 2 + 0.1, 0.08));
+        g.add(caja(0.7, 0.5, anchoH + 0.6, '#4a4a52', xo + s * 0.35, 3.8, z, 0.08));
+        g.add(caja(0.5, 0.06, anchoH - 0.4, '#9a9da4', xo + s * 0.25, 0.2, z));  // niveladora
+        [-1, 1].forEach(function (k) { g.add(caja(0.25, 0.4, 0.3, '#1f1f23', xo + s * 0.12, 0.25, z + k * (anchoH / 2 - 0.5))); }); // topes
+        // semáforo: verde = puede acercarse
+        g.add(caja(0.3, 0.7, 0.2, '#2a2a2e', xo + s * 0.1, 3.0, z + anchoH / 2 + 0.8));
+        var verde = new T.Mesh(esferaGeo(0.1), brillo('#3fbf6a')); verde.position.set(xo + s * 0.22, 3.2, z + anchoH / 2 + 0.8); g.add(verde);
+        var rojo = new T.Mesh(esferaGeo(0.1), mat('#7a2a2a')); rojo.position.set(xo + s * 0.22, 2.9, z + anchoH / 2 + 0.8); g.add(rojo);
+        // guías amarillas en el suelo para entrar marcha atrás
+        [-1, 1].forEach(function (k) { var gl = plano(12, 0.18, '#f2c230', xo + s * 6.5, 0.04, z + k * 1.7); g.add(gl); });
       });
     });
     // columnas
     for (var cx = x0 + 11; cx < x1 - 1; cx += 11) g.add(caja(0.4, h, 0.4, '#e2ddd3', cx, 0.2, z0 + 0.4));
-    // pantallas de luz del techo (se encienden de noche)
-    var lamp = brillo('#fff6d8');
-    for (var lx = x0 + 5; lx < x1; lx += 9) for (var lz = z0 + 5; lz < z1; lz += 8) {
-      var l = new T.Mesh(geoCaja(2.4, 0.08, 0.4), lamp); l.position.set(lx, h - 0.3, lz); g.add(l);
-    }
     return g;
   };
 
@@ -307,13 +393,56 @@
   };
 
   P.retractiladora = function () {
+    // Enfardadora: el palé gira y el carro sube y baja dejando el film; se ve cómo crece la envoltura.
     var g = new T.Group();
     g.add(cilindro(1.4, 1.4, 0.15, '#8c8f97', 0, 0, 0, 24));
     var giro = new T.Group(); giro.position.y = 0.15; g.add(giro);
-    var p = P.palet(true, SL.azar(11)); p.position.set(0, 0, 0); giro.add(p);
-    g.add(caja(0.3, 3.0, 0.3, '#3a3a40', 1.9, 0, 0));
-    var rollo = cilindro(0.16, 0.16, 0.5, '#e9f2f7', 1.7, 0.5, 0); g.add(rollo);
-    animables.push(function (t) { giro.rotation.y = t * 1.2; rollo.position.y = 0.3 + (Math.sin(t * 0.6) + 1) * 0.5; });
+    var p = P.palet(true, SL.azar(11)); giro.add(p);
+    var altoCarga = p.children[p.children.length - 1].geometry.parameters ? 1.2 : 1.2;
+    var filmMat = new T.MeshStandardMaterial({ color: '#dff0fb', transparent: true, opacity: 0.55, roughness: 0.15, depthWrite: false });
+    var film = new T.Mesh(geoCaja(1.26, 1, 0.9, 0.05), filmMat); film.position.y = 0.13; giro.add(film);
+    g.add(caja(0.3, 3.0, 0.3, '#3a3a40', 1.9, 0, 0));                         // columna
+    var carro = new T.Group(); g.add(carro);
+    carro.add(caja(0.5, 0.6, 0.4, est.acento, 1.75, 0, 0, 0.06));
+    var rollo = cilindro(0.15, 0.15, 0.55, '#e9f2f7', 1.45, 0.02, 0); carro.add(rollo);
+    var hilo = new T.Mesh(new T.PlaneGeometry(1, 0.5), filmMat); hilo.position.set(1.0, 0.3, 0); hilo.rotation.y = Math.PI / 2; carro.add(hilo);
+    animables.push(function (t) {
+      var ciclo = 12, k = (t % ciclo) / ciclo;                                 // 0-1: envolver; al final se reinicia
+      giro.rotation.y = t * 2.2;
+      var subir = k < 0.5 ? k * 2 : 2 - k * 2;                                 // sube y baja
+      carro.position.y = 0.2 + subir * (altoCarga - 0.3);
+      var hecho = Math.min(1, k * 1.3);
+      film.scale.y = Math.max(0.02, Math.min(1, (k < 0.5 ? subir : 1)) * altoCarga);
+      filmMat.opacity = 0.25 + hecho * 0.45;
+      hilo.visible = k < 0.92; film.visible = k < 0.97;
+    });
+    return g;
+  };
+
+  // Trabajador quieto haciendo una tarea: etiquetar, revisar (con lector) o preparar pedidos.
+  P.trabajador = function (o) {
+    var g = P.persona({ chaleco: true, casco: o.casco, semilla: o.semilla || 50 }), u = g.userData, acc = o.accion || 'revisar';
+    var mano = u.brazos[0], fase = (o.semilla || 1) * 1.7;
+    if (acc === 'revisar') { // lector de códigos en la mano
+      mano.add(caja(0.08, 0.16, 0.12, '#2a2a2e', 0, -0.5, 0.05)); var luz = new T.Mesh(geoCaja(0.05, 0.02, 0.05), brillo('#ff4040')); luz.position.set(0, -0.58, 0.08); mano.add(luz);
+    }
+    var cajaMano = null;
+    if (acc === 'preparar') { cajaMano = caja(0.4, 0.3, 0.3, est.cajas ? est.cajas[0] : '#c9a06a', 0, 0.75, -0.35, 0.03); u.cuerpo.add(cajaMano); }
+    animables.push(function (t) {
+      var a = t * 2 + fase;
+      if (acc === 'etiquetar') { // manos sobre la mesa, pegando etiquetas
+        u.brazos[0].rotation.x = -1.1 + Math.sin(a * 2) * 0.25; u.brazos[1].rotation.x = -1.0 + Math.sin(a * 2 + 1.5) * 0.2;
+        u.cuerpo.rotation.x = 0.12;
+      } else if (acc === 'revisar') { // apunta el lector a las cajas y mira
+        u.brazos[0].rotation.x = -1.2 + Math.sin(a) * 0.15; u.cuerpo.rotation.y = Math.PI + Math.sin(a * 0.4) * 0.5;
+        u.cuerpo.rotation.x = 0.08;
+      } else { // coge una caja de la estantería y la deja en el palé
+        var k = (Math.sin(a * 0.7) + 1) / 2;
+        u.cuerpo.rotation.y = Math.PI + (k - 0.5) * 2.6; u.cuerpo.rotation.x = 0.35 * Math.abs(Math.sin(a * 1.4));
+        u.brazos[0].rotation.x = u.brazos[1].rotation.x = -1.0;
+        cajaMano.visible = Math.sin(a * 0.7) > -0.2;
+      }
+    });
     return g;
   };
 
@@ -331,41 +460,44 @@
       g.add(caja(1.8, 0.06, 0.8, '#ffffff', x, 1.05, 0));
       g.add(caja(0.06, 0.8, 0.06, '#8c8f97', x - 0.8, 0.3, 0)); g.add(caja(0.06, 0.8, 0.06, '#8c8f97', x + 0.8, 0.3, 0));
       var pant = new T.Mesh(geoCaja(0.7, 0.45, 0.05), brillo('#7fb3e8')); pant.position.set(x, 1.15, -0.25); g.add(pant);
+      g.add(caja(0.5, 0.08, 0.5, '#2e2e33', x, 0.65, 0.75, 0.04));
+      var ofi = P.persona({ sentado: true, semilla: 20 + i * 5 }); ofi.position.set(x, 0.7, 0.75); g.add(ofi);
     }
     return g;
   };
 
   P.fabrica = function (o) {
-    var g = new T.Group(), w = o.ancho || 26, d = o.fondo || 12, h = 7;
-    g.add(caja(w, h, d, est.fabrica || '#efe2cf', 0, 0, 0, 0.2));
-    var n = Math.round(w / 4.2);
-    for (var i = 0; i < n; i++) { // tejado en diente de sierra
-      var x = -w / 2 + (i + 0.5) * (w / n);
-      var t = caja(w / n - 0.1, 1.6, d - 0.4, est.tejado || '#d9cbb6', x, h, 0, 0.1); t.rotation.x = 0.0; g.add(t);
-      var vid = new T.Mesh(geoCaja(w / n - 0.4, 1.2, 0.08), brillo('#ffe1a3')); vid.position.set(x, h + 0.2, d / 2 - 0.25); g.add(vid);
-    }
-    for (var v = 0; v < 6; v++) { var win = new T.Mesh(geoCaja(2.2, 1.4, 0.08), brillo('#ffe1a3')); win.position.set(-w / 2 + 2.5 + v * (w - 5) / 5, 3, d / 2 + 0.02); g.add(win); }
-    var chimenea = cilindro(0.7, 0.9, 6, '#d7c6ad', w / 2 - 3, h, -2); g.add(chimenea);
-    g.add(cilindro(0.75, 0.75, 0.4, est.acento, w / 2 - 3, h + 5.6, -2));
-    // vapor
-    var humo = [];
-    for (var k = 0; k < 8; k++) {
-      var s = new T.Mesh(new T.SphereGeometry(0.7, 10, 8), new T.MeshStandardMaterial({ color: '#ffffff', transparent: true, opacity: 0.6, roughness: 1 }));
-      g.add(s); humo.push(s);
-    }
-    animables.push(function (t) {
-      humo.forEach(function (s, i) {
-        var f = ((t * 0.18) + i / humo.length) % 1;
-        s.position.set(w / 2 - 3 + Math.sin(f * 4 + i) * 0.6 + f * 2.5, h + 6.2 + f * 6, -2);
-        s.scale.setScalar(0.6 + f * 1.8); s.material.opacity = 0.55 * (1 - f);
-      });
+    var g = new T.Group(), w = o.ancho || 26, d = o.fondo || 12, h = 6, ac = est.acento;
+    g.add(caja(w, h, d, est.fabrica || '#f7f2e8', 0, 0, 0, 0.15));
+    g.add(caja(w + 0.1, 0.6, d + 0.1, ac, 0, 0, 0));                         // zócalo
+    // tejado a dos aguas (prisma) con alero
+    var forma = new T.Shape(); forma.moveTo(-d / 2 - 0.6, 0); forma.lineTo(d / 2 + 0.6, 0); forma.lineTo(0, 3.2); forma.lineTo(-d / 2 - 0.6, 0);
+    var gt = new T.ExtrudeGeometry(forma, { depth: w + 1, bevelEnabled: false }); gt.translate(0, 0, -(w + 1) / 2);
+    var tej = new T.Mesh(gt, mat(est.tejado || '#e3a83f')); tej.rotation.y = Math.PI / 2; tej.position.y = h; tej.castShadow = true; g.add(tej);
+    [-w / 2 - 0.02, w / 2 + 0.02].forEach(function (x) { // hastiales blancos
+      var fh = new T.Shape(); fh.moveTo(-d / 2, 0); fh.lineTo(d / 2, 0); fh.lineTo(0, 2.9); fh.lineTo(-d / 2, 0);
+      var m = new T.Mesh(new T.ShapeGeometry(fh), mat(est.fabrica || '#f7f2e8', { side: T.DoubleSide })); m.rotation.y = Math.PI / 2; m.position.set(x, h, 0); g.add(m);
     });
-    if (o.rotulo) {
-      var tx = textoTextura(o.rotulo, { color: '#ffffff', fondo: est.acento, tam: 110 });
-      var r = new T.Mesh(new T.PlaneGeometry(14, 2.4), new T.MeshStandardMaterial({ map: tx, roughness: 0.8 }));
-      r.position.set(-2, 5.4, d / 2 + 0.06); g.add(r);
+    // ventanas con marco frambuesa y puertas enrollables
+    for (var v = 0; v < 5; v++) {
+      var vx = -w / 2 + 9 + v * (w - 12) / 4;
+      g.add(caja(2.0, 1.5, 0.1, ac, vx, 2.6, d / 2 + 0.02));
+      var win = new T.Mesh(geoCaja(1.7, 1.2, 0.08), brillo('#ffe1a3')); win.position.set(vx, 2.75, d / 2 + 0.06); g.add(win);
     }
-    g.add(caja(4, 4, 0.1, '#b9bcc4', -w / 2 + 4, 0, d / 2 + 0.03)); // puerta
+    g.add(caja(4.4, 4.4, 0.12, ac, -w / 2 + 4, 0, d / 2 + 0.03));
+    g.add(caja(4.0, 4.1, 0.12, '#e9e2d6', -w / 2 + 4, 0, d / 2 + 0.08));
+    if (o.rotulo) {
+      var tx = textoTextura(o.rotulo, { color: ac, fondo: '#ffffff', tam: 150, logo: 'assets/marca/serenitos-isologo.png' });
+      var r = new T.Mesh(new T.PlaneGeometry(12, 3), new T.MeshStandardMaterial({ map: tx, roughness: 0.8 }));
+      r.position.set(2, h + 1.3, d / 2 + 1.3); r.rotation.x = -0.08; g.add(r);
+      g.add(caja(12.3, 0.2, 0.2, ac, 2, h - 0.25, d / 2 + 1.25));
+    }
+    // silo de leche y depósito de agua al lado
+    var sx = w / 2 + 3.2;
+    g.add(cilindro(2, 2, 8, '#e6e8eb', sx, 1.4, -1, 18));
+    var cono = new T.Mesh(new T.ConeGeometry(2.05, 1.4, 18), mat(ac)); cono.position.set(sx, 10.1, -1); cono.castShadow = true; g.add(cono);
+    [[-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]].forEach(function (p) { g.add(cilindro(0.12, 0.12, 1.5, '#8c8f97', sx + p[0], 0, -1 + p[1])); });
+    g.add(cilindro(1.1, 1.1, 2.4, ac, sx + 0.6, 0, 3.4, 16));
     return g;
   };
 
@@ -398,9 +530,41 @@
   P.cartel = function (o) {
     var g = new T.Group();
     g.add(caja(0.2, 2.2, 0.2, '#55555c', -2.6, 0)); g.add(caja(0.2, 2.2, 0.2, '#55555c', 2.6, 0));
-    var tx = textoTextura(o.texto || '', { color: '#ffffff', fondo: est.acento, tam: 92 });
+    var tx = textoTextura(o.texto || '', { color: est.acento, fondo: '#ffffff', tam: 92, logo: o.logo });
     var m = new T.Mesh(geoCaja(6, 1.5, 0.2, 0.1), [mat(est.acento), mat(est.acento), mat(est.acento), mat(est.acento), new T.MeshStandardMaterial({ map: tx }), mat(est.acento)]);
     m.position.y = 2.0; m.castShadow = true; g.add(m);
+    return g;
+  };
+
+  P.muroPiedra = function (o) { // muro bajo de piedra seca, de (x1,z1) a (x2,z2) relativo
+    var g = new T.Group(), az = SL.azar(o.semilla || 5), dx = o.x2 - o.x1, dz = o.z2 - o.z1, L = Math.sqrt(dx * dx + dz * dz), n = Math.round(L / 0.9);
+    for (var i = 0; i < n; i++) for (var f = 0; f < 2; f++) {
+      var t = (i + 0.5 + f * 0.5) / n; if (t > 1) continue;
+      var c = ['#b9b2a6', '#a59e92', '#c8c1b4'][Math.floor(az() * 3)];
+      var p = caja(0.9 + az() * 0.3, 0.42, 0.7, c, o.x1 + dx * t, f * 0.4, o.z1 + dz * t, 0.12);
+      p.rotation.y = Math.atan2(dx, dz) + Math.PI / 2 + (az() - 0.5) * 0.3; g.add(p);
+    }
+    return g;
+  };
+
+  P.caseta = function (o) { // control de entrada: caseta y barrera
+    var g = new T.Group();
+    g.add(caja(2.6, 2.6, 2.6, '#f7f2e8', 0, 0, 0, 0.1));
+    g.add(caja(3.0, 0.25, 3.0, est.acento, 0, 2.6, 0, 0.05));
+    var v = new T.Mesh(geoCaja(2.0, 0.9, 0.06), brillo('#cfe4f2')); v.position.set(0, 1.3, 1.31); g.add(v);
+    g.add(caja(0.4, 1.0, 0.4, '#34343a', 1.8, 0, 1.3));
+    var brazo = new T.Group(); brazo.position.set(1.8, 0.95, 1.3); g.add(brazo);
+    for (var k = 0; k < 7; k++) brazo.add(caja(0.8, 0.12, 0.12, k % 2 ? '#ffffff' : est.acento, 0.4 + k * 0.8, 0, 0));
+    brazo.rotation.z = o.abierta === false ? 0 : 1.2;
+    return g;
+  };
+
+  P.aparcamiento = function (o) { // plazas del personal
+    var g = new T.Group(), n = o.plazas || 6, w = n * 2.6;
+    g.add(plano(w + 1, 5.6, est.asfalto || '#cfc9bd', 0, 0.03, 0));
+    for (var k = 0; k <= n; k++) g.add(plano(0.12, 4.6, '#ffffff', -w / 2 + k * 2.6, 0.04, -0.3));
+    var cols = ['#2f4fa3', '#edeae3', '#c8463e', '#55565c'];
+    (o.coches || [0, 2, 3]).forEach(function (k, i) { var c = P.coche({ color: cols[i % cols.length] }); c.position.set(-w / 2 + 1.3 + k * 2.6, 0, -0.3); g.add(c); });
     return g;
   };
 
@@ -415,10 +579,24 @@
     this.id = i; this.def = def;
     var pieza = P[def.tipo === 'retractil' ? 'carretilla' : def.tipo];
     this.obj = pieza(def);
-    this.ruta = def.ruta.map(function (p) { return { x: p[0], z: p[1], o: p[2] || {} }; });
-    this.i = def.inicio || 0; this.pos = new T.Vector3(this.ruta[this.i].x, 0, this.ruta[this.i].z);
+    var crudo = def.ruta.map(function (p) { return { x: p[0], z: p[1], o: p[2] || {} }; });
+    var R = def.giro != null ? def.giro : def.tipo === 'camion' ? 5 : def.tipo === 'coche' ? 4 : def.tipo === 'persona' ? 0.4 : 1.2;
+    var ruta = [], indice = [];
+    crudo.forEach(function (p, k) {
+      indice[k] = ruta.length;
+      var a = crudo[k - 1], b = crudo[k + 1];
+      var limpio = !p.o.espera && !p.o.salto && p.o.carga == null && a && b && !b.o.salto && !!b.o.atras === !!p.o.atras;
+      if (!limpio || R <= 0) { ruta.push(p); return; }
+      var d1x = p.x - a.x, d1z = p.z - a.z, l1 = Math.hypot(d1x, d1z), d2x = b.x - p.x, d2z = b.z - p.z, l2 = Math.hypot(d2x, d2z);
+      if (l1 < 0.01 || l2 < 0.01 || Math.abs(d1x * d2z - d1z * d2x) / (l1 * l2) < 0.05) { ruta.push(p); return; }
+      var r = Math.min(R, l1 * 0.48, l2 * 0.48), ax = p.x - d1x / l1 * r, az = p.z - d1z / l1 * r, bx = p.x + d2x / l2 * r, bz = p.z + d2z / l2 * r;
+      for (var n = 0; n <= 8; n++) { var t = n / 8, u = 1 - t;
+        ruta.push({ x: u * u * ax + 2 * u * t * p.x + t * t * bx, z: u * u * az + 2 * u * t * p.z + t * t * bz, o: { atras: p.o.atras } }); }
+    });
+    this.ruta = ruta;
+    this.i = indice[def.inicio || 0]; this.pos = new T.Vector3(this.ruta[this.i].x, 0, this.ruta[this.i].z);
     this.vel = def.vel || 3; this.espera = 0; this.bloqueado = false; this.ang = 0;
-    this.radio = def.tipo === 'camion' ? 5.5 : def.tipo === 'coche' ? 3 : 2.2;
+    this.radio = def.tipo === 'camion' ? 5.5 : def.tipo === 'coche' ? 3 : def.tipo === 'persona' ? 0.7 : 2.2;
     this.obj.position.copy(this.pos);
     if (def.cargaInicial && this.obj.userData.carga) this.obj.userData.carga.visible = true;
     var sig = this.objetivo(); this.ang = Math.atan2(-(sig.x - this.pos.x), -(sig.z - this.pos.z)) || 0;
@@ -442,32 +620,73 @@
       yo.bloqueadoPor = v; return true;
     });
     if (this.bloqueado) return;
-    var paso = this.vel * dt;
+    var paso = this.vel * dt * (obj.o.atras ? 0.55 : 1); // marcha atrás, despacio
     if (paso >= dist) { this.pos.set(obj.x, 0, obj.z); this.llegar(obj); }
     else { this.pos.x += dirx * paso; this.pos.z += dirz * paso; }
     var ang = Math.atan2(-dirx, -dirz) + (obj.o.atras ? Math.PI : 0); // las piezas miran a -z
     var dA = ((ang - this.ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-    this.ang += dA * Math.min(1, dt * 5);
+    this.ang += dA * Math.min(1, dt * (this.def.tipo === 'persona' ? 6 : 9));
   };
   Vehiculo.prototype.llegar = function (p) {
     this.i = (this.i + 1) % this.ruta.length;
     if (p.o.salto) this.pos.set(p.x, 0, p.z);
     if (p.o.espera) this.espera = p.o.espera;
     var c = this.obj.userData.carga;
-    if (c && p.o.carga != null) c.visible = !!p.o.carga;
+    if (c && p.o.carga != null) {
+      // La mercancía no desaparece: al descargar queda un palé en el suelo; al cargar se recoge el que haya cerca.
+      var donde = this.puntoCarga();
+      if (p.o.carga) recoger(donde); else if (c.visible) dejar(donde, this.obj.rotation.y);
+      c.visible = !!p.o.carga;
+    }
   };
+  Vehiculo.prototype.puntoCarga = function () {
+    this.obj.updateMatrixWorld(true);
+    if (this.def.tipo === 'camion') { var v = this.obj.localToWorld(new T.Vector3(0, 0, 6.6)); v.y = 0.21; return v; } // detrás del camión, ya dentro del muelle
+    var w = new T.Vector3(); this.obj.userData.carga.getWorldPosition(w);
+    if (this.def.retractil) { w.x += this.def.huecoX || 1.75; w.y = 3.2; } // la retráctil lo deja arriba, en la estantería
+    return w;
+  };
+  var sueltos = []; // palés dejados en el suelo o en la estantería
+  function dejar(pos, giro) {
+    if (sueltos.some(function (p) { return p.position.distanceTo(pos) < 1.0; })) return;
+    var pl = P.palet(true, SL.azar(sueltos.length + 70)); pl.position.copy(pos); pl.rotation.y = giro + Math.PI / 2;
+    escena.add(pl); sueltos.push(pl);
+  }
+  function recoger(pos) {
+    var mejor = -1, dm = 3;
+    sueltos.forEach(function (p, i) { var d = Math.hypot(p.position.x - pos.x, p.position.z - pos.z); if (d < dm) { dm = d; mejor = i; } });
+    if (mejor >= 0) { escena.remove(sueltos[mejor]); sueltos.splice(mejor, 1); }
+  }
   Vehiculo.prototype.pintar = function (t) {
     this.obj.position.set(this.pos.x, this.y0, this.pos.z);
     this.obj.rotation.y = this.ang;
     var h = this.obj.userData.horquillas;
+    var anda = this.espera <= 0 && !this.bloqueado;
+    if (this.obj.userData.piernas) caminar(this.obj, t * 7 + this.id, !anda);
+    if (this.obj.userData.operario) caminar(this.obj.userData.operario, t * 6 + this.id, !anda);
     if (h) { var arriba = this.espera > 0 && this.def.tipo === 'retractil'; h.position.y += ((arriba ? 3.3 : 0.12) - h.position.y) * 0.04; }
   };
 
   // ---------- construcción ----------
   function construir() {
     est = mundo.estilo || {};
+    var campo = new T.Mesh(new T.CircleGeometry(900, 48), new T.MeshStandardMaterial({ color: est.campo || est.cesped || '#e2c47a', roughness: 1 }));
+    campo.rotation.x = -Math.PI / 2; campo.position.y = -0.02; campo.receiveShadow = true; escena.add(campo);
     var suelo = plano(mundo.suelo.ancho, mundo.suelo.fondo, est.suelo || '#efe9df', 0, 0, 0);
     escena.add(suelo);
+    // lomas suaves de la dehesa a lo lejos (se funden con la niebla)
+    var azL = SL.azar(77);
+    for (var li = 0; li < 34; li++) {
+      var ang = li / 34 * Math.PI * 2 + azL() * 0.15, rad = 230 + azL() * 90;
+      var lm = new T.Mesh(new T.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat(azL() < 0.5 ? (est.loma || '#cdb46e') : (est.loma2 || '#a9a46c')));
+      lm.scale.set(40 + azL() * 40, 10 + azL() * 16, 30 + azL() * 20); lm.position.set(Math.cos(ang) * rad, -1, Math.sin(ang) * rad); lm.rotation.y = -ang;
+      escena.add(lm);
+    }
+    var azE = SL.azar(55); // encinas sueltas por el campo
+    for (var ei = 0; ei < 60; ei++) {
+      var ea = azE() * Math.PI * 2, er = 75 + azE() * 130, en = P.arbol({ especie: azE() < 0.6 ? 'encina' : 'olivo' }, azE);
+      en.position.set(Math.cos(ea) * er * 1.3, 0, Math.sin(ea) * er); en.scale.setScalar(1.2 + azE() * 0.6); escena.add(en);
+    }
     (mundo.cesped || []).forEach(function (c) { escena.add(plano(c[2] - c[0], c[3] - c[1], est.cesped || '#cfe0c4', (c[0] + c[2]) / 2, 0.015, (c[1] + c[3]) / 2)); });
     (mundo.carreteras || []).forEach(function (c) {
       var dx = c[2] - c[0], dz = c[3] - c[1], largo = Math.sqrt(dx * dx + dz * dz), ancho = c[4] || 8;
@@ -482,7 +701,7 @@
       g.position.set(o.x || 0, o.y || 0, o.z || 0);
       g.rotation.y = o.giro || 0;
       escena.add(g);
-      if (o.info) ficha(g, Object.assign({ tipo: 'objeto' }, o.info));
+      if (o.info) ficha(g, Object.assign({ tipo: 'objeto', grupo: /^(rack|mesaEtiquetado|retractiladora|oficina)$/.test(o.tipo) ? 'Dentro de la nave' : o.tipo === 'camion' ? 'Camiones' : undefined }, o.info));
     });
     // zonas tocables (planos de color sobre el suelo)
     (mundo.zonas || []).forEach(function (z) {
@@ -517,7 +736,9 @@
   M.volarA = function (dest, dur, alTerminar) {
     siguiendo = null;
     var desde = Object.assign({}, camEstado), a = Object.assign({}, camEstado, dest);
+    if (modo2D) { a.az = 0; a.el = EL2D; }
     var dAz = ((a.az - desde.az + Math.PI * 3) % (Math.PI * 2)) - Math.PI; a.az = desde.az + dAz;
+    meta = null;
     vuelo = { desde: desde, a: a, t: 0, dur: SL.sinMovimiento ? 0.01 : (dur == null ? 1.4 : dur), fin: alTerminar };
   };
   M.camara = function () { return Object.assign({}, camEstado); };
@@ -527,6 +748,13 @@
   };
   M.inicio = function (dur) { M.volarA(mundo.camaraInicial, dur); };
 
+  var modo2D = false, EL2D = 1.5;
+  M.vista2D = function (si) {
+    modo2D = !!si; meta = null;
+    M.volarA(si ? { az: 0, el: EL2D, dist: Math.max(camEstado.dist, 70) } : { az: mundo.camaraInicial.az, el: mundo.camaraInicial.el }, 0.9);
+    return modo2D;
+  };
+  M.es2D = function () { return modo2D; };
   var DMIN = 24, DMAX = 110; // zoom: ni dentro de una caja ni perdido en el horizonte
   function controles() {
     var el = render.domElement, arr = null, movido = 0;
@@ -542,16 +770,17 @@
       var dx = e.clientX - arr.x, dy = e.clientY - arr.y; arr.x = e.clientX; arr.y = e.clientY;
       movido += Math.abs(dx) + Math.abs(dy);
       if (movido < 4) return;
+      if (vuelo || !meta) meta = Object.assign({}, camEstado);
       vuelo = null; siguiendo = null;
-      if (arr.girar) {
-        camEstado.az -= dx * 0.006;
-        camEstado.el = Math.min(1.3, Math.max(0.42, camEstado.el + dy * 0.004));
+      if (arr.girar && !modo2D) {
+        meta.az -= dx * 0.005;
+        meta.el = Math.min(1.3, Math.max(0.3, meta.el + dy * 0.003));
       } else {
-        var k = camEstado.dist * 0.0016, s = Math.sin(camEstado.az), c = Math.cos(camEstado.az);
-        camEstado.x -= (dx * c + dy * s) * k;
-        camEstado.z -= (-dx * s + dy * c) * k;
+        var k = meta.dist * 0.0016, s = Math.sin(meta.az), c = Math.cos(meta.az);
+        meta.x -= (dx * c + dy * s) * k;
+        meta.z -= (-dx * s + dy * c) * k;
         var lim = mundo.limite || 16;
-        camEstado.x = Math.max(-lim, Math.min(lim, camEstado.x)); camEstado.z = Math.max(-lim, Math.min(lim, camEstado.z));
+        meta.x = Math.max(-lim, Math.min(lim, meta.x)); meta.z = Math.max(-lim, Math.min(lim, meta.z));
       }
     });
     el.addEventListener('pointerup', function (e) {
@@ -559,8 +788,10 @@
       arr = null;
     });
     el.addEventListener('wheel', function (e) {
-      e.preventDefault(); vuelo = null;
-      camEstado.dist = Math.min(DMAX, Math.max(DMIN, camEstado.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+      e.preventDefault();
+      if (vuelo || !meta) meta = Object.assign({}, camEstado);
+      vuelo = null;
+      meta.dist = Math.min(DMAX, Math.max(DMIN, meta.dist * (1 + Math.sign(e.deltaY) * 0.1)));
     }, { passive: false });
   }
   M.zoom = function (f) { M.volarA({ dist: Math.min(DMAX, Math.max(DMIN, camEstado.dist * f)) }, 0.4); };
@@ -598,7 +829,12 @@
     else M.seleccionar(null);
   }
 
+  M.elementos = function () { return elementos; };
+  // Al cerrar la ficha se vuelve a la vista de antes.
+  M.volver = function () { var c = camAntes; camAntes = null; M.seleccionar(null); if (c) M.volarA(c, 1.0); };
   M.seleccionar = function (obj, f) {
+    if (obj && !seleccion && !camAntes) camAntes = Object.assign({}, camEstado);
+    if (!obj) siguiendo = null;
     seleccion = obj ? { obj: obj, ficha: f } : null;
     anillo.visible = !!obj;
     if (obj) {
@@ -669,6 +905,7 @@
     var k = mezclaNoche;
     cTmp.copy(cDia).lerp(cNoche, k);
     escena.background.copy(cTmp); escena.fog.color.copy(cTmp);
+    if (cielo) { cielo.material.uniforms.abajo.value.copy(cTmp); cielo.material.uniforms.noche.value = k; cielo.position.copy(camara.position); }
     luzCielo.intensity = 0.62 - 0.46 * k;
     luzSol.intensity = 1.0 - 0.8 * k;
     luzSol.color.copy(cSolDia).lerp(cSolNoche, k);
@@ -691,8 +928,16 @@
     cDia = new T.Color(e.cielo || '#f3efe8'); cNoche = new T.Color(e.cieloNoche || '#1d2438');
     cSolDia = new T.Color('#fff4e2'); cSolNoche = new T.Color('#8fa4d8'); cTmp = new T.Color();
     escena.background = cDia.clone();
-    escena.fog = new T.Fog(cDia.clone(), 120, 260);
-    camara = new T.PerspectiveCamera(30, 1, 1, 600);
+    escena.fog = new T.Fog(cDia.clone(), 150, 420);
+    camara = new T.PerspectiveCamera(30, 1, 1, 2000);
+    // cúpula de cielo: azul suave arriba y el color de la niebla en el horizonte
+    cielo = new T.Mesh(new T.SphereGeometry(1500, 24, 12), new T.ShaderMaterial({
+      side: T.BackSide, depthWrite: false, fog: false,
+      uniforms: { arriba: { value: new T.Color(e.cieloAlto || '#a9cbe3') }, abajo: { value: cDia.clone() }, noche: { value: 0 } },
+      vertexShader: 'varying float vY; void main(){ vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: 'uniform vec3 arriba; uniform vec3 abajo; uniform float noche; varying float vY; void main(){ float k = smoothstep(0.0, 0.35, vY); vec3 c = mix(abajo, arriba, k); gl_FragColor = vec4(mix(c, abajo, noche), 1.0); }'
+    }));
+    escena.add(cielo);
     luzCielo = new T.HemisphereLight('#ffffff', '#d9cfbf', 0.95); escena.add(luzCielo);
     luzSol = new T.DirectionalLight('#fff4e2', 1.25);
     luzSol.position.set(-40, 70, 35); luzSol.castShadow = true;
@@ -725,6 +970,9 @@
         vuelo.t += dt / vuelo.dur; var k = suave(Math.min(1, vuelo.t));
         ['x', 'z', 'dist', 'az', 'el'].forEach(function (p) { camEstado[p] = vuelo.desde[p] + (vuelo.a[p] - vuelo.desde[p]) * k; });
         if (vuelo.t >= 1) { var f = vuelo.fin; vuelo = null; if (f) f(); }
+      } else if (meta) {
+        var kk = SL.sinMovimiento ? 1 : 1 - Math.exp(-dt * 6);
+        ['x', 'z', 'dist', 'az', 'el'].forEach(function (p) { camEstado[p] += (meta[p] - camEstado[p]) * kk; });
       } else if (siguiendo) {
         camEstado.x += (siguiendo.position.x - camEstado.x) * Math.min(1, dt * 3);
         camEstado.z += (siguiendo.position.z - camEstado.z) * Math.min(1, dt * 3);
