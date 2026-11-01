@@ -658,7 +658,7 @@ body:has(.sl-portada) #sl-ver-tuto { display: none; }
 .sl-pie--fijo { position: fixed; z-index: 4; left: 0; right: 0; bottom: 0; height: 62px; margin: 0; padding-left: 30px;
   background: linear-gradient(to top, var(--sl-fondo) 55%, transparent); }
 body:has(.sl-pantalla) .sl-ayuda, body:has(.sl-pantalla) .sl-creditos { z-index: 55; }
-@media (max-width: 759px) { .sl-pie--fijo { display: none; } body:has(.sl-pantalla) .sl-ayuda { display: none; } }
+@media (max-width: 759px) { .sl-pie--fijo { display: none; } body:has(.sl-portada) .sl-ayuda { display: none; } }
 
 /* ---------- Mandos del mapa (como en Cubic Lab): 2D/3D, nombres, día/noche, zoom y explorar ---------- */
 .sl-mando { position: absolute; z-index: 4; }

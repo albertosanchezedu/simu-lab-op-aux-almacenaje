@@ -138,7 +138,7 @@
         '<h2 class="sl-divisor__titulo">' + o.titulo + '</h2>' +
         (o.gancho ? '<p class="sl-divisor__gancho">' + o.gancho + '</p>' : '') +
         '<button type="button" class="sl-btn sl-btn--oscuro sl-btn--grande">' + (o.boton || 'Empezar') + '</button>'));
-      pieApp(p);
+      // Portada de capítulo: sin pie de página; solo queda el «?».
       // Entrando desde el mapa: se puede volver a él.
       if (o.alVolver) {
         var bv = el('button', 'sl-btn sl-divisor__volver', flecha(o.volver || '← Volver al almacén'));
