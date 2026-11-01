@@ -3,6 +3,7 @@
 Lee **README.md** antes de nada.
 
 ## Reglas de trabajo
+- **MÁXIMA**: lo que no es sencillo no se usa; lo complicado no se entiende. Pocas cosas en pantalla y solo lo que toca ahora.
 - **Usuario**: Alberto, docente de FP de Comercio y Marketing. Respuestas breves, en castellano, sin introducciones.
 - **Alumnado**: Grado Básico, conocimientos casi nulos, muchas NEE, apenas leen. Por eso:
   - frases MUY cortas, una idea por bocadillo, que se despliegan con «Siguiente»;
