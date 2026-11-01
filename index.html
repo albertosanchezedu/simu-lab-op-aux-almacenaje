@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SimuLab · Operaciones Auxiliares de Almacenaje</title>
+  <meta name="description" content="Mundo 3D para aprender Operaciones Auxiliares de Almacenaje jugando. Caso: Mermeladas de mi Abuela.">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="core/estilo.css?v=1">
+</head>
+<body>
+  <!-- Motor común -->
+  <script src="vendor/three.min.js?v=1"></script>
+  <script src="core/simulab.js?v=1"></script>
+  <script src="core/mundo3d.js?v=1"></script>
+  <script src="core/guia.js?v=1"></script>
+  <script src="core/juego.js?v=1"></script>
+  <!-- Mundo común (recinto de Mermeladas de mi Abuela, personajes y prólogo) -->
+  <script src="mundo/mundo.js?v=1"></script>
+  <script src="mundo/historia.js?v=1"></script>
+  <!-- Unidades de trabajo: cada una en su carpeta. Añadir aquí cuando estén listas. -->
+  <script src="unidades/ut3-almacenaje/ut3.js?v=1"></script>
+  <!-- Sesión después de las unidades (el código de partida usa sus misiones) -->
+  <script src="core/sesion.js?v=1"></script>
+  <script src="core/app.js?v=1"></script>
+  <script>SimuLab.App.iniciar();</script>
+</body>
+</html>
