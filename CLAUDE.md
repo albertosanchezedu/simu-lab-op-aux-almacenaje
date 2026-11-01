@@ -16,4 +16,4 @@ Lee **README.md** antes de nada.
 - **Arquitectura**: lo genérico en `core/`; el mundo en `mundo/`; cada unidad en su carpeta `unidades/utN-*/`, independiente.
 - **Sin dependencias externas en producción** (nada de CDN): debe abrir en Moodle y GitHub Pages.
 - **Contenido** alineado con la programación (RA3, CE a–i para la UT3) y los apuntes de las unidades. Si algo los contradice, avisar.
-- Commits pequeños y en castellano.
+- Commits pequeños y en castellano. **Se trabaja directamente en `main`** (sin PR): GitHub Pages sale de main. Permiso de Alberto (1/11).
