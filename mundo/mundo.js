@@ -1,5 +1,5 @@
 /* SimuLab · mundo/mundo.js
- * El MUNDO común a todas las unidades: el recinto de Mermeladas de mi Abuela.
+ * El MUNDO común a todas las unidades: la nave de Serenitos (crema de queso de oveja) a las afueras de Santa Aurelia.
  * Solo datos. Medidas en metros. Plano visto desde arriba: x de izquierda a derecha,
  * z de atrás (norte, fábrica) hacia delante (sur, carretera).
  * El flujo de la mercancía va de izquierda a derecha: ① recepción → ② control → ③ almacenaje → ④ control de existencias → ⑤ expedición.
@@ -8,23 +8,23 @@
   'use strict';
   var SL = window.SimuLab;
 
-  // Colores del mundo. PROVISIONALES: cambiarán con la paleta de María.
-  var ACENTO = '#d6455d'; // frambuesa (mermelada)
+  // Colores del mundo: la paleta de María y Serenitos (mostaza, blanco, frambuesa) sobre neutros cálidos.
+  var ACENTO = '#b8324f', MOSTAZA = '#e3a83f';
 
   SL.mundo = {
-    nombre: 'Mermeladas de mi Abuela',
+    nombre: 'Serenitos',
     estilo: {
       acento: ACENTO,
-      cielo: '#f3eee6', cieloNoche: '#1d2438',
+      cielo: '#f3e9d6', cieloNoche: '#1d2438',
       suelo: '#ece5d8', cesped: '#d3e2c4', asfalto: '#d4d0c8',
       losa: '#e7e1d6', sueloNave: '#f8f5ef', muro: '#f3efe8',
-      rackPuntal: '#4b5f9e', rackLarguero: '#ef8a3c', madera: '#d2a96f',
-      cajas: ['#c9a06a', '#d8b47e', '#e7d3b0', ACENTO, '#f0b65a'],
-      arbol: '#93b48a', arbol2: '#6f9a72', fabrica: '#f1e4d0', tejado: '#ddcdb5'
+      rackPuntal: '#5a4a40', rackLarguero: MOSTAZA, madera: '#d2a96f',
+      cajas: ['#c9a06a', '#d8b47e', '#f7f2e8', ACENTO, MOSTAZA],
+      arbol: '#9fb27e', arbol2: '#7c955f', fabrica: '#f7f2e8', tejado: MOSTAZA
     },
     suelo: { ancho: 280, fondo: 200 },
-    limite: 70,
-    camaraInicial: { x: 0, z: -3, dist: 104, az: 0.55, el: 0.72 },
+    limite: 16,
+    camaraInicial: { x: 0, z: -4, dist: 100, az: 0.55, el: 0.74 },
 
     cesped: [[-42, 13.5, 42, 21], [-40, -40, 40, -34], [26, -20, 42, -12], [-42, -22, -26, -12]],
     // [x1, z1, x2, z2, ancho, rayas]
@@ -49,7 +49,7 @@
     // Las cinco unidades de trabajo, situadas en el mapa.
     unidades: [
       { n: 1, id: 'ut1', titulo: 'Recepción de mercancías', corto: 'Recepción', x: -17.8, z: 0, alto: 6, zona: 'recepcion' },
-      { n: 2, id: 'ut2', titulo: 'Etiquetas y codificación', corto: 'Etiquetado', x: -10, z: 2, alto: 10.5, zona: 'control' },
+      { n: 2, id: 'ut2', titulo: 'Etiquetas y codificación', corto: 'Etiquetado', x: -10, z: 2, alto: 13, zona: 'control' },
       { n: 3, id: 'ut3', titulo: 'Almacenaje de mercancías', corto: 'Almacenaje', x: 2, z: -2, alto: 8, zona: 'almacenaje' },
       { n: 4, id: 'ut4', titulo: 'Control de existencias', corto: 'Existencias', x: 16.3, z: -8.6, alto: 7, zona: 'oficinas' },
       { n: 5, id: 'ut5', titulo: 'Expedición de mercancías', corto: 'Expedición', x: 19.3, z: 4, alto: 10, zona: 'expedicion' }
@@ -58,7 +58,7 @@
     objetos: [
       { tipo: 'nave', x: 0, z: 0, ancho: 44, fondo: 24, alto: 6, altoFrente: 1.0,
         muelles: [{ lado: 'oeste', z: -6 }, { lado: 'oeste', z: 1 }, { lado: 'este', z: 2 }, { lado: 'este', z: 8 }],
-        info: { nombre: 'Nave del almacén', texto: 'Almacén cubierto de producto terminado. Aquí se guardan los tarros listos para vender.', datos: [['Superficie', '1.056 m²'], ['Altura', '6 m'], ['Muelles', '4']] } },
+        info: { nombre: 'Nave del almacén', texto: 'Almacén cubierto de producto terminado. Aquí se guardan los tarritos listos para vender.', datos: [['Superficie', '1.056 m²'], ['Altura', '6 m'], ['Muelles', '4']] } },
       { tipo: 'lineasSuelo', lineas: [[-21.5, 4.8, 10.8, 4.8], [-21.5, 11.3, 21.5, 11.3], [11, -5.4, 21.5, -5.4, 0.16, '#4f9a63']], pasos: [[16, -4.6, 1.6]] },
       // ③ Almacenaje: estanterías convencionales de palés
       { tipo: 'rack', x: -5, z: -3.2, largo: 14, niveles: 3, semilla: 3, info: { nombre: 'Estantería de palés', texto: 'Estantería convencional. Los palés se guardan en alto, por niveles.', datos: [['Niveles', '3'], ['Altura', '5 m'], ['Carga por hueco', '1.000 kg']], anillo: 4 } },
@@ -76,13 +76,13 @@
       { tipo: 'retractiladora', x: 13.5, z: -1, info: { nombre: 'Retractiladora', texto: 'Envuelve el palé con plástico para que la carga no se mueva.', datos: [['Vueltas', '12 por palé'], ['Tiempo', '90 s']] } },
       { tipo: 'palets', semilla: 9, puntos: [[13, 5.5, 1.57], [13, 7.3, 1.57], [15, 9.5, 1.57], [19.5, -3.5, 1.57], [19.5, -2, 1.57], [19.5, 4.6, 1.57]] },
       // Exterior
-      { tipo: 'camion', x: -29.1, z: 1, giro: Math.PI / 2, color: '#f4f2ee', cabina: '#5b6f9e', rotulo: 'FRUTAS DEL VALLE', cabinaRotulo: '#5b6f9e',
-        info: { nombre: 'Camión del proveedor de fruta', texto: 'Espera su turno en el muelle 2.', datos: [['Matrícula', '7309 HGT'], ['Carga', '14 palés'], ['Origen', 'Murcia']], anillo: 3 } },
-      { tipo: 'fabrica', x: -4, z: -27, ancho: 30, fondo: 12, rotulo: 'Mermeladas de mi Abuela',
-        info: { nombre: 'Fábrica de mermeladas', texto: 'Aquí se cocinan las mermeladas. Lo que sale de aquí va a la nave.', datos: [['Producción', '6.000 tarros al día'], ['Objetivo', '× 10']], anillo: 6 } },
-      { tipo: 'camara', x: 20, z: -25, ancho: 9, fondo: 7, info: { nombre: 'Cámara de fruta', texto: 'Almacén de materias primas, con frío. Guarda la fruta fresca.', datos: [['Temperatura', '2 °C'], ['Contenido', 'Fresa, melocotón, naranja']], anillo: 3 } },
+      { tipo: 'camion', x: -29.1, z: 1, giro: Math.PI / 2, color: '#f4f2ee', cabina: '#5b6f9e', rotulo: 'LÁCTEOS LA SERENA', cabinaRotulo: '#5b6f9e',
+        info: { nombre: 'Camión de la cooperativa', texto: 'Trae la leche de oveja refrigerada. Espera su turno en el muelle 2.', datos: [['Matrícula', '7309 HGT'], ['Carga', 'Leche a 4 °C'], ['Origen', 'La Serena']], anillo: 3 } },
+      { tipo: 'fabrica', x: -4, z: -27, ancho: 30, fondo: 12, rotulo: 'Serenitos',
+        info: { nombre: 'Obrador', texto: 'Aquí se hace la crema de queso con la receta de la abuela Manuela. Lo que sale va a la nave.', datos: [['Producción', '3.000 tarritos al día'], ['Objetivo', '× 10']], anillo: 6 } },
+      { tipo: 'camara', x: 20, z: -25, ancho: 9, fondo: 7, info: { nombre: 'Cámara frigorífica', texto: 'Almacén con frío. Guarda la leche y los tarritos que caducan pronto.', datos: [['Temperatura', '2 a 4 °C'], ['Contenido', 'Leche y crema de queso']], anillo: 3 } },
       { tipo: 'patioAireLibre', x: -33, z: 12, ancho: 11, fondo: 6, info: { nombre: 'Almacén al aire libre', texto: 'Sin techo. Solo para lo que no se estropea: palés vacíos.', datos: [['Palés vacíos', '≈ 60']], anillo: 3 } },
-      { tipo: 'cartel', x: -14, z: 20.5, texto: 'Mermeladas de mi Abuela' },
+      { tipo: 'cartel', x: -14, z: 20.5, texto: 'Serenitos · Santa Aurelia' },
       { tipo: 'farola', x: -30, z: 21.5 }, { tipo: 'farola', x: -10, z: 21.5 }, { tipo: 'farola', x: 10, z: 21.5 }, { tipo: 'farola', x: 30, z: 21.5 },
       { tipo: 'farola', x: -38, z: -12 }, { tipo: 'farola', x: 38, z: -2 },
       { tipo: 'arbol', x: -38, z: 18 }, { tipo: 'arbol', x: -30, z: 17.5 }, { tipo: 'arbol', x: -22, z: 18 }, { tipo: 'arbol', x: -4, z: 17.5 },
@@ -95,11 +95,11 @@
 
     // Vida: rutas en bucle. [x, z, { espera, atras, carga, salto }]. capa: solo se ceden el paso los de la misma capa.
     vehiculos: [
-      { tipo: 'camion', capa: 'fuera', vel: 6, color: '#f4f2ee', rotulo: 'ENVASES IBÉRICOS', cargaInicial: true,
-        info: { nombre: 'Camión del proveedor', texto: 'Trae tarros vacíos, tapas y azúcar.', datos: [['Matrícula', '4821 KLM'], ['Carga', '18 palés'], ['Destino', 'Muelle 1']] },
+      { tipo: 'camion', capa: 'fuera', vel: 6, color: '#f4f2ee', rotulo: 'VIDRIOS DEL GUADIANA', cargaInicial: true,
+        info: { nombre: 'Camión del proveedor', texto: 'Trae tarros de cristal vacíos, tapas y etiquetas.', datos: [['Matrícula', '4821 KLM'], ['Carga', '18 palés'], ['Destino', 'Muelle 1']] },
         ruta: [[-125, 24.5], [-45, 24.5], [-45, -6], [-29.1, -6, { atras: true, espera: 7 }], [-29, -6, { espera: 6, carga: false }],
                [-49, -6], [-49, 27.5], [-125, 27.5], [-125, 24.5, { salto: true, carga: true }]] },
-      { tipo: 'camion', capa: 'fuera', vel: 6, color: '#ffffff', rotulo: 'MERMELADAS DE MI ABUELA', inicio: 2,
+      { tipo: 'camion', capa: 'fuera', vel: 6, color: '#ffffff', rotulo: 'SERENITOS', inicio: 2,
         info: { nombre: 'Camión hacia el supermercado', texto: 'Se lleva los pedidos a las 40 tiendas.', datos: [['Matrícula', '1156 MBR'], ['Pedido', '22 palés'], ['Destino', 'Plataforma regional']] },
         ruta: [[125, 27.5], [45, 27.5], [45, 8], [29.1, 8, { atras: true, espera: 7 }], [29, 8, { espera: 6, carga: true }],
                [49, 8], [49, 24.5], [125, 24.5], [125, 27.5, { salto: true, carga: false }]] },

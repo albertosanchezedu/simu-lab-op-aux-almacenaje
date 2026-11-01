@@ -527,11 +527,13 @@
   };
   M.inicio = function (dur) { M.volarA(mundo.camaraInicial, dur); };
 
+  var DMIN = 24, DMAX = 110; // zoom: ni dentro de una caja ni perdido en el horizonte
   function controles() {
     var el = render.domElement, arr = null, movido = 0;
     el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     el.addEventListener('pointerdown', function (e) {
-      arr = { x: e.clientX, y: e.clientY, girar: e.button === 2 || e.shiftKey, id: e.pointerId };
+      // Arrastrar = girar alrededor de la nave. Botón derecho o Mayús = desplazar un poco (con límite).
+      arr = { x: e.clientX, y: e.clientY, girar: !(e.button === 2 || e.shiftKey), id: e.pointerId };
       movido = 0; el.setPointerCapture(e.pointerId);
     });
     el.addEventListener('pointermove', function (e) {
@@ -543,12 +545,12 @@
       vuelo = null; siguiendo = null;
       if (arr.girar) {
         camEstado.az -= dx * 0.006;
-        camEstado.el = Math.min(1.35, Math.max(0.3, camEstado.el + dy * 0.004));
+        camEstado.el = Math.min(1.3, Math.max(0.42, camEstado.el + dy * 0.004));
       } else {
         var k = camEstado.dist * 0.0016, s = Math.sin(camEstado.az), c = Math.cos(camEstado.az);
         camEstado.x -= (dx * c + dy * s) * k;
         camEstado.z -= (-dx * s + dy * c) * k;
-        var lim = mundo.limite || 60;
+        var lim = mundo.limite || 16;
         camEstado.x = Math.max(-lim, Math.min(lim, camEstado.x)); camEstado.z = Math.max(-lim, Math.min(lim, camEstado.z));
       }
     });
@@ -558,10 +560,10 @@
     });
     el.addEventListener('wheel', function (e) {
       e.preventDefault(); vuelo = null;
-      camEstado.dist = Math.min(150, Math.max(14, camEstado.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+      camEstado.dist = Math.min(DMAX, Math.max(DMIN, camEstado.dist * (1 + Math.sign(e.deltaY) * 0.1)));
     }, { passive: false });
   }
-  M.zoom = function (f) { M.volarA({ dist: Math.min(150, Math.max(14, camEstado.dist * f)) }, 0.4); };
+  M.zoom = function (f) { M.volarA({ dist: Math.min(DMAX, Math.max(DMIN, camEstado.dist * f)) }, 0.4); };
 
   function actualizarPuntero(e) {
     var r = render.domElement.getBoundingClientRect();

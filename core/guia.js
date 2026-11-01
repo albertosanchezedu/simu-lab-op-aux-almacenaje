@@ -1,120 +1,127 @@
 /* SimuLab · core/guia.js
- * Panel de la guía: personaje (PNG) y bocadillo. Una frase por bocadillo.
- * El texto aparece poco a poco y se avanza con «Siguiente». «Atrás» repite la frase anterior.
- * Si un personaje aún no tiene imagen, se dibuja una silueta provisional con su color.
+ * Panel del personaje que guía (como en Cubic Lab): bocadillo de alto fijo, figura PNG y los botones
+ * Atrás / Siguiente debajo. Una frase por bocadillo; el texto y la figura cambian con un fundido suave.
+ * Si un personaje aún no tiene imagen, se dibuja una silueta con sus colores.
+ *   decir(lineas, alTerminar, { espera: 'texto del botón mientras se responde', fin: 'texto del último botón', desde })
  */
 (function () {
   'use strict';
   var SL = window.SimuLab;
   var G = SL.Guia = {};
-  var raiz, elQuien, elTexto, elPie, elFig, elRol;
-  var lineas = [], idx = 0, alTerminar = null, escribiendo = null, modoEspera = false;
+  var RUTA = 'assets/personajes/';
+  var elTexto, elQuien, elImg, elPanel, btnSig, btnAtras;
+  var lineas = [], idx = 0, alTerminar = null, espera = false, codigo = null, reloj = null;
 
   function personaje(id) { return (SL.historia && SL.historia.personajes[id]) || { nombre: id }; }
 
+  // Silueta provisional con los colores del personaje (María: chaqueta mostaza, pelo castaño).
   function silueta(p) {
-    var c = p.color || 'var(--marca)';
-    return '<svg class="sl-maria-prov" viewBox="0 0 220 300" role="img" aria-label="' + p.nombre + ' (imagen provisional)">' +
-      '<defs><linearGradient id="slg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + c + '" stop-opacity=".95"/><stop offset="1" stop-color="' + c + '" stop-opacity=".55"/></linearGradient></defs>' +
-      '<ellipse cx="110" cy="92" rx="52" ry="58" fill="url(#slg)"/>' +
-      '<path d="M58 70c6-40 98-46 108 4-18-14-50-22-108-4z" fill="#3b1f33" opacity=".35"/>' +
-      '<path d="M22 300c0-74 38-128 88-128s88 54 88 128z" fill="url(#slg)"/>' +
-      '<rect x="56" y="232" width="108" height="30" rx="15" fill="#fff" opacity=".9"/>' +
-      '<text x="110" y="252" text-anchor="middle" fill="#3b1f33">' + p.nombre + ' · pronto</text></svg>';
+    var ropa = p.color || '#e3a83f', pelo = p.pelo || '#4a3226';
+    return '<svg class="sl-silueta" viewBox="0 0 200 300" role="img" aria-label="' + p.nombre + '">' +
+      '<path d="M48 300c0-70 22-118 52-126 30 8 52 56 52 126z" fill="' + ropa + '"/>' +
+      '<path d="M88 176h24v40H88z" fill="#fff"/>' +
+      '<ellipse cx="100" cy="98" rx="44" ry="50" fill="#f1c9a5"/>' +
+      '<path d="M54 104c-4-52 26-74 46-74s52 18 46 74c-6 40-2 70 6 82-14-6-18-30-18-58 0-28-6-44-34-50-28 6-34 22-34 50 0 28-4 52-18 58 8-12 12-42 6-82z" fill="' + pelo + '"/>' +
+      '<text x="100" y="290" text-anchor="middle" class="sl-silueta__cod">' + p.nombre + '</text></svg>';
   }
 
-  G.iniciar = function (contenedor) {
-    raiz = contenedor;
-    raiz.innerHTML =
-      '<div class="sl-bocadillo"><p class="sl-bocadillo__quien"></p><p class="sl-bocadillo__texto" aria-live="polite"></p><div class="sl-bocadillo__pie"></div></div>' +
-      '<figure class="sl-personaje"><span class="sl-personaje__rol"></span></figure>';
-    elQuien = raiz.querySelector('.sl-bocadillo__quien');
-    elTexto = raiz.querySelector('.sl-bocadillo__texto');
-    elPie = raiz.querySelector('.sl-bocadillo__pie');
-    elFig = raiz.querySelector('.sl-personaje');
-    elRol = raiz.querySelector('.sl-personaje__rol');
-    elTexto.addEventListener('click', completar);
-  };
+  // Centra la figura por lo que ocupa de verdad (igual que en Cubic Lab).
+  var CAJAS = {};
+  function caja(img) {
+    if (CAJAS[img.src]) return CAJAS[img.src];
+    try {
+      var w = 180, h = Math.round(w * img.naturalHeight / img.naturalWidth), cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      var c = cv.getContext('2d'); c.drawImage(img, 0, 0, w, h);
+      var d = c.getImageData(0, 0, w, h).data, x0 = w, x1 = 0, y0 = -1, c0 = w, c1 = 0;
+      for (var y = 0; y < h * 0.89; y++) for (var x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 24) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y0 < 0) y0 = y;
+        if (y < y0 + h * 0.12) { if (x < c0) c0 = x; if (x > c1) c1 = x; }
+      }
+      return (CAJAS[img.src] = x1 > x0 ? { x0: x0 / w, x1: (x1 + 1) / w, cab: (c0 + c1 + 1) / 2 / w } : null);
+    } catch (e) { return (CAJAS[img.src] = null); }
+  }
+  function encajar(img) {
+    var b = caja(img), W = elImg.clientWidth, w = img.offsetWidth;
+    if (!b || !W || !w) return;
+    var cw = (b.x1 - b.x0) * w, off = ((cw > W - 6 ? b.cab : (b.x0 + b.x1) / 2) - 0.5) * w;
+    img.style.transform = 'translateX(-50%) translateX(' + (-off).toFixed(1) + 'px)';
+  }
 
-  var figActual = null;
-  function pintarFigura(quien, gesto) {
+  function figura(quien, gesto) {
     var p = personaje(quien), cod = p.gestos && (p.gestos[gesto] || p.gestos[p.gestoBase]);
     var clave = quien + '|' + (cod || '');
-    if (clave === figActual) return;
-    figActual = clave;
-    elFig.classList.add('cambia');
-    setTimeout(function () {
-      var vieja = elFig.querySelector('img, svg'); if (vieja) vieja.remove();
-      if (cod) {
-        var img = new Image(); img.alt = p.nombre; img.src = SL.recurso('assets/personajes/' + cod + '.png');
-        img.onerror = function () { img.replaceWith(htmlNodo(silueta(p))); };
-        elFig.insertBefore(img, elRol);
-      } else elFig.insertBefore(htmlNodo(silueta(p)), elRol);
-      elRol.textContent = p.rol || '';
-      requestAnimationFrame(function () { elFig.classList.remove('cambia'); });
-    }, figActual ? 160 : 0);
+    if (clave === codigo) return;
+    codigo = clave;
+    var capa = SL.el('div', 'sl-personaje__capa');
+    if (cod) {
+      var im = new Image(); im.alt = p.nombre; im.src = SL.recurso(RUTA + cod + '.png');
+      im.onload = function () { encajar(im); };
+      im.onerror = function () { capa.innerHTML = silueta(p); };
+      capa.appendChild(im);
+    } else capa.innerHTML = silueta(p);
+    var viejas = elImg.querySelectorAll('.sl-personaje__capa');
+    elImg.appendChild(capa);
+    requestAnimationFrame(function () {
+      capa.classList.add('sl-personaje__capa--ve');
+      viejas.forEach(function (v) { v.classList.remove('sl-personaje__capa--ve'); setTimeout(function () { v.remove(); }, 400); });
+    });
   }
-  function htmlNodo(h) { var d = document.createElement('div'); d.innerHTML = h; return d.firstChild; }
 
-  function escribir(texto) {
-    clearInterval(escribiendo);
-    // **negrita** → <strong>
-    var html = texto.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    if (SL.sinMovimiento) { elTexto.innerHTML = html; return; }
-    var limpio = html.replace(/<[^>]+>/g, ''), n = 0;
-    elTexto.dataset.completo = html;
-    escribiendo = setInterval(function () {
-      n += 2;
-      if (n >= limpio.length) { clearInterval(escribiendo); escribiendo = null; elTexto.innerHTML = html; return; }
-      elTexto.textContent = limpio.slice(0, n);
-    }, 24);
-  }
-  function completar() {
-    if (escribiendo) { clearInterval(escribiendo); escribiendo = null; elTexto.innerHTML = elTexto.dataset.completo || elTexto.innerHTML; return true; }
-    return false;
+  function poner(texto, sinFundido) {
+    var html = String(texto).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    clearTimeout(reloj);
+    if (SL.sinMovimiento || sinFundido) { elTexto.innerHTML = html; return; }
+    elTexto.classList.add('sl-bocadillo__texto--cambia');
+    reloj = setTimeout(function () { elTexto.innerHTML = html; elTexto.classList.remove('sl-bocadillo__texto--cambia'); }, 220);
   }
 
   function mostrar() {
     var l = lineas[idx], p = personaje(l.quien);
-    elQuien.innerHTML = p.nombre + (p.etiqueta ? ' <small>' + p.etiqueta + '</small>' : '');
-    pintarFigura(l.quien, l.gesto);
-    escribir(l.texto);
+    elPanel.dataset.quien = l.quien;
+    elQuien.textContent = p.nombre + (p.etiqueta ? ' · ' + p.etiqueta : '');
+    figura(l.quien, l.gesto);
+    poner(l.texto, !elTexto.textContent);
     if (l.alMostrar) l.alMostrar();
-    pie();
+    botones();
   }
 
-  function pie() {
-    elPie.innerHTML = '';
-    var puntos = SL.el('div', 'sl-puntos');
-    if (lineas.length > 1) for (var i = 0; i < lineas.length; i++) puntos.appendChild(SL.el('i', i <= idx ? 'on' : ''));
-    var atras = SL.el('button', 'sl-btn sl-btn--mini', '‹');
-    atras.setAttribute('aria-label', 'Repetir la frase anterior');
-    atras.disabled = idx === 0;
-    atras.onclick = function () { if (idx > 0) { idx--; mostrar(); } };
-    elPie.appendChild(atras); elPie.appendChild(puntos);
-    if (modoEspera && idx === lineas.length - 1) {
-      elPie.appendChild(SL.el('span', 'sl-bocadillo__espera', modoEspera === true ? 'Te toca' : modoEspera));
-      return;
-    }
-    if (idx === lineas.length - 1 && !alTerminar) return;
-    var sig = SL.el('button', 'sl-btn sl-btn--oscuro', (idx === lineas.length - 1 && lineas.textoFin) ? lineas.textoFin : 'Siguiente ›');
-    sig.onclick = function () {
-      if (completar()) return;
+  function botones() {
+    var ultima = idx >= lineas.length - 1;
+    btnAtras.disabled = idx === 0;
+    if (ultima && espera) { btnSig.disabled = true; btnSig.textContent = espera === true ? 'Te toca' : espera; return; }
+    btnSig.disabled = ultima && !alTerminar;
+    btnSig.textContent = ultima && lineas.fin ? lineas.fin : 'Siguiente →';
+    if (!btnSig.disabled) setTimeout(function () { try { btnSig.focus({ preventScroll: true }); } catch (e) { /* nada */ } }, 60);
+  }
+
+  G.iniciar = function (contenido, sig, atras) {
+    elPanel = contenido.closest('.sl-panel') || contenido;
+    contenido.innerHTML =
+      '<div class="sl-bocadillo"><p class="sl-bocadillo__quien"></p><p class="sl-bocadillo__texto" aria-live="polite"></p></div>' +
+      '<figure class="sl-personaje"><div class="sl-personaje__img"></div></figure>';
+    elTexto = contenido.querySelector('.sl-bocadillo__texto');
+    elQuien = contenido.querySelector('.sl-bocadillo__quien');
+    elImg = contenido.querySelector('.sl-personaje__img');
+    btnSig = sig; btnAtras = atras;
+    if (window.ResizeObserver) new ResizeObserver(function () { elPanel.style.setProperty('--ancho-panel', elPanel.clientWidth + 'px'); }).observe(elPanel);
+    window.addEventListener('resize', function () { elImg.querySelectorAll('img').forEach(encajar); });
+    btnSig.addEventListener('click', function () {
       if (idx < lineas.length - 1) { idx++; mostrar(); }
       else if (alTerminar) { var f = alTerminar; alTerminar = null; f(); }
-    };
-    elPie.appendChild(sig);
-    setTimeout(function () { try { sig.focus({ preventScroll: true }); } catch (e) { } }, 50);
-  }
+    });
+    btnAtras.addEventListener('click', function () { if (idx > 0) { idx--; mostrar(); } });
+  };
 
-  /** Muestra una o varias frases. opc: { espera: true|'texto' (no hay Siguiente al final), fin: 'Texto botón' } */
   G.decir = function (ls, terminar, opc) {
     opc = opc || {};
     lineas = (Array.isArray(ls) ? ls : [ls]).filter(Boolean);
-    lineas.textoFin = opc.fin;
-    idx = Math.min(opc.desde || 0, Math.max(0, lineas.length - 1)); alTerminar = terminar || null; modoEspera = opc.espera || false;
+    lineas.fin = opc.fin;
+    alTerminar = terminar || null; espera = opc.espera || false;
+    idx = Math.min(opc.desde || 0, Math.max(0, lineas.length - 1));
     if (!lineas.length) { if (terminar) terminar(); return; }
     mostrar();
   };
-  G.espera = function (v) { modoEspera = v; pie(); };
+  G.espera = function (v) { espera = v; botones(); };
 })();

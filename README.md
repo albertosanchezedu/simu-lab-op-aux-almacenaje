@@ -1,7 +1,7 @@
 # SimuLab ✦ Operaciones Auxiliares de Almacenaje
 
 Mundo 3D para aprender **Operaciones Auxiliares de Almacenaje** (FP Grado Básico Servicios Comerciales) jugando.
-Caso: **Mermeladas de mi Abuela**. El alumnado es el equipo de la consultora **Dual & Co.**: María (la clienta) pone el problema, Alberto (el jefe) pone el estándar profesional y el alumno pone la solución.
+Caso: **Serenitos** (crema de queso de oveja, Santa Aurelia). La receta es de la abuela Manuela; Carmen, la madre, se jubila y María (21) se queda la nave justo cuando un supermercado pide 40 tiendas (× 10). El alumnado es el equipo de la consultora **Dual & Co.**: María (la clienta) pone el problema, Alberto (el jefe) pone el estándar profesional y el alumno pone la solución.
 
 No da nota: es «el libro sin ser un libro». Las actividades y exámenes van aparte.
 
@@ -41,7 +41,9 @@ El almacén sigue el camino de la mercancía, de izquierda a derecha:
 
 ## Personajes
 Solo **Alberto** (PNG ALB_01…06) y **María** (pendiente: silueta provisional). Cuando lleguen sus imágenes: `assets/personajes/MAR_0N.png` y sus gestos en `mundo/historia.js`.
-Los colores de identidad (`--marca*` en `core/estilo.css` y `ACENTO` en `mundo/mundo.js`) son **provisionales** hasta tener la paleta de María.
+Identidad: la paleta de María y Serenitos (mostaza, blanco y frambuesa: `--sl-*` en `core/estilo.css` y `mundo/mundo.js`).
+
+**Recorrido** (igual que Cubic Lab): portada → almacén (mapa central con las unidades) → capítulos de la unidad → pantalla intermedia → capítulo. Cada capítulo lleva obligatoriamente un paso `cuaderno` (teoría para copiar, proyectada).
 
 ---
 SimuLab (marca y `core/`) © Alberto Sánchez Cabanillas · Todos los derechos reservados.

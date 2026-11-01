@@ -6,6 +6,8 @@
  *   vf       { pregunta, enunciado, correcta: true|false, porque }
  *   ordenar  { pregunta, enunciado, items (en el orden correcto), pistas, bien }
  *   repaso   { n, banco: [preguntas] }   (cada vez salen n al azar: se repite lo mismo de muchas formas)
+ *   cuaderno { titulo, lineas: [...], dice }  TEORÍA para copiar en el cuaderno (proyectada en la pizarra). Obligatoria en cada capítulo.
+ * Cada misión es un CAPÍTULO: entra con una pantalla intermedia (titulo + gancho).
  * etapa = índice de la etapa del marcador de progreso.
  * Las misiones nunca se reordenan: las nuevas se añaden al final (el código de partida depende del orden).
  */
@@ -24,7 +26,7 @@
     { tipo: 'vf', pregunta: A('pensativo', 'Verdadero o falso.'), enunciado: 'En recepción se comprueba que la mercancía llega bien.', correcta: true, porque: 'Verdadero. Se cuenta y se mira si hay algo roto.' },
     { tipo: 'elegir', pregunta: Ma('Tengo una caja sin etiqueta. ¿A dónde la llevo?'), enunciado: '¿Dónde se pone la etiqueta a la caja?', opciones: ['Control y etiquetado', 'Expedición', 'Carga y descarga'], correcta: 0, porque: 'En control y etiquetado: se revisa y se pone la etiqueta.' },
     { tipo: 'elegir', pregunta: Ma('El supermercado ha hecho un pedido.'), enunciado: '¿Qué zona junta los productos de cada pedido?', opciones: ['Preparación de pedidos', 'Recepción', 'Oficina'], correcta: 0, porque: 'Preparación de pedidos: se junta el pedido y se envuelve.' },
-    { tipo: 'elegir', pregunta: Ma('Llega un camión con azúcar.'), enunciado: '¿Cuál es la primera zona de DENTRO de la nave que pisa el azúcar?', opciones: ['Recepción', 'Almacenaje', 'Expedición'], correcta: 0, porque: 'Recepción: lo primero al entrar es revisar.' },
+    { tipo: 'elegir', pregunta: Ma('Llega el camión de la leche.'), enunciado: '¿Cuál es la primera zona de DENTRO de la nave que pisa la leche?', opciones: ['Recepción', 'Almacenaje', 'Expedición'], correcta: 0, porque: 'Recepción: lo primero al entrar es revisar.' },
     { tipo: 'elegir', pregunta: A('pensativo', 'Pregunta de jefe.'), enunciado: '¿Para qué sirve la retractiladora?', opciones: ['Envolver el palé con plástico', 'Subir palés a lo alto', 'Pesar las cajas'], correcta: 0, porque: 'Envuelve el palé con plástico para que la carga no se mueva.' },
     { tipo: 'tocar', pregunta: A('ojo', 'Toca la zona donde se guardan las cajas.'), correcta: 'almacenaje', porque: 'Es almacenaje: la zona grande de las estanterías.' },
     { tipo: 'tocar', pregunta: A('ojo', 'Toca la zona por donde sale el pedido al cliente.'), correcta: 'expedicion', porque: 'Es expedición: junto a los muelles de la derecha.' },
@@ -39,6 +41,7 @@
     misiones: [
       {
         id: 'ut3-zonas', titulo: 'Las zonas del almacén', resumen: 'Cada zona tiene un trabajo', ce: 'b',
+        gancho: 'Las cajas se dejan donde hay hueco. ¿Y si cada cosa tuviera su sitio?',
         etapas: ['Conocer', 'Localizar', 'Pensar', 'Ordenar', 'Repasar'],
         pasos: [
           { tipo: 'dialogo', etapa: 0, lineas: [
@@ -55,8 +58,19 @@
             A('senala', '**Preparación de pedidos.** Se junta cada pedido y se envuelve.', 'preparacion'),
             A('senala', '**Expedición.** Por aquí sale la mercancía hacia el cliente.', 'expedicion'),
             A('senala', 'Y la **oficina**: desde aquí se controla todo.', 'oficinas'),
-            A('ojo', 'Ahora te toca a ti. Toca en el almacén.')
+            A('ojo', 'Ahora, al cuaderno.')
           ] },
+          { tipo: 'cuaderno', etapa: 0, titulo: 'Las zonas del almacén',
+            dice: A('senala', 'Sacad el cuaderno. Copiad esto con buena letra.'),
+            lineas: [
+              '**Carga y descarga**: fuera. Paran los camiones.',
+              '**Recepción**: se revisa lo que llega.',
+              '**Control y etiquetado**: se mira y se etiqueta.',
+              '**Almacenaje**: se guarda la mercancía.',
+              '**Preparación de pedidos**: se junta cada pedido.',
+              '**Expedición**: sale hacia el cliente.'
+            ] },
+          { tipo: 'dialogo', etapa: 1, lineas: [A('ojo', 'Ahora te toca a ti. Toca en el almacén.')] },
           { tipo: 'tocar', etapa: 1, pregunta: Ma('Llega un camión con tarros vacíos. ¿Dónde aparca?'), correcta: 'carga',
             pistas: ['¿Dónde cabe un camión: dentro o fuera de la nave?', 'Busca fuera, junto a las puertas grandes de la izquierda.', 'Es **carga y descarga**: fuera, junto a los muelles. Tócala.'],
             bien: '¡Eso es! El camión se queda fuera, pegado al muelle.' },
@@ -70,7 +84,7 @@
             opciones: ['Se revisa la mercancía que llega', 'Se envuelven los pedidos', 'Se cargan los camiones del cliente'], correcta: 0,
             pistas: ['Piensa: la mercancía acaba de llegar.', 'Antes de guardar algo, hay que mirarlo.', 'En recepción **se revisa lo que llega**: cuántas cajas y en qué estado.'],
             bien: 'Exacto. Primero se revisa. Luego se guarda.' },
-          { tipo: 'tocar', etapa: 1, pregunta: Ma('El supermercado pide 200 tarros. Hay que juntarlos y envolverlos. ¿Dónde?'), correcta: 'preparacion',
+          { tipo: 'tocar', etapa: 1, pregunta: Ma('El supermercado pide 200 tarritos. Hay que juntarlos y envolverlos. ¿Dónde?'), correcta: 'preparacion',
             pistas: ['¿Dónde está la máquina que envuelve los palés?', 'Está entre las estanterías y los muelles de la derecha.', 'Es **preparación de pedidos**. Tócala.'],
             bien: '¡Muy bien! Ahí está la retractiladora: envuelve el palé con plástico.' },
           { tipo: 'tocar', etapa: 1, pregunta: Ma('El pedido está listo. ¿Por dónde sale?'), correcta: 'expedicion',

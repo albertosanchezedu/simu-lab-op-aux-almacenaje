@@ -1,11 +1,18 @@
 /* SimuLab · core/simulab.js
  * Espacio de nombres común, utilidades y progreso guardado.
- * El motor (core/) no sabe nada de mermeladas ni de unidades concretas:
+ * El motor (core/) no sabe nada de ningún módulo concreto:
  * el mundo se describe en mundo/ y cada unidad en unidades/<ut>/.
  */
 (function () {
   'use strict';
   var SL = window.SimuLab = window.SimuLab || {};
+
+  // La marca SimuLab es común a todos los simuladores (como Cubic Lab): no cambia de uno a otro.
+  SL.marca = {
+    nombre: 'SimuLab',
+    antetitulo: 'La empresa, en tus manos',
+    derechos: '© Alberto Sánchez Cabanillas · Todos los derechos reservados'
+  };
 
   SL.unidades = {};          // se rellenan con SL.registrarUnidad()
   SL.imagenes = SL.imagenes || {}; // en la versión de un solo archivo, recursos incrustados

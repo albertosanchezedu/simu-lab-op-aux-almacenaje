@@ -10,8 +10,15 @@
   var M3 = function () { return SL.Mundo3D; };
   var PISTAS = ['Casi. Piénsalo otra vez.', 'Fíjate bien en el nombre.', 'Mira la respuesta marcada y tócala.'];
 
-  J.centro = null; // contenedor de tarjetas (lo pone app.js)
-  J.chip = null;
+  J.escenario = null; // caja del escenario (la pone app.js)
+  J.lamina = null;    // lámina que tapa el almacén para preguntar
+
+  function lamina(nodo) {
+    J.lamina.innerHTML = '';
+    if (!nodo) { J.lamina.hidden = true; return; }
+    J.lamina.appendChild(nodo); J.lamina.hidden = false;
+  }
+  J.verLamina = lamina;
 
   function linea(base, texto, gesto) {
     if (!texto) return null;
@@ -20,12 +27,12 @@
   }
   J.toast = function (txt, mal) {
     var t = SL.el('div', 'sl-toast' + (mal ? ' sl-toast--mal' : ''), txt);
-    document.body.appendChild(t); setTimeout(function () { t.remove(); }, 950);
+    (J.escenario || document.body).appendChild(t); setTimeout(function () { t.remove(); }, 950);
   };
   function chip(txt) {
-    if (!J.chip) return;
-    J.chip.hidden = !txt;
-    if (txt) J.chip.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 11.2V5.5a2 2 0 1 1 4 0v4.3l4.2.8a2.3 2.3 0 0 1 1.8 2.6l-.8 5.3A3 3 0 0 1 15.2 21h-4a3 3 0 0 1-2.4-1.2l-3.6-4.8a1.6 1.6 0 0 1 2.4-2.1z"/></svg>' + txt;
+    var v = J.escenario && J.escenario.querySelector('.sl-toca');
+    if (v) v.remove();
+    if (txt) J.escenario.appendChild(SL.el('div', 'sl-toca', '☝ ' + txt));
   }
   function pistaDe(p, n) {
     var t = (p.pistas && p.pistas[Math.min(n, p.pistas.length - 1)]) || PISTAS[Math.min(n, 2)];
@@ -52,11 +59,12 @@
       if (fallos >= 3 && marcarBuena) marcarBuena();
     }
     var marcarBuena = null;
-    function limpiar() { chip(null); M3().modoTocarZonas(null); M3().limpiarZonas(); J.centro.innerHTML = ''; }
+    function limpiar() { chip(null); M3().modoTocarZonas(null); M3().limpiarZonas(); lamina(null); }
 
     if (p.tipo === 'tocar') {
       SL.Guia.decir([pregunta], null, { espera: 'Toca en el almacén' });
-      chip(p.instruccion || 'Toca una zona del almacén');
+      lamina(null);
+      chip(p.instruccion || 'Toca la zona en el almacén');
       M3().inicio(1.2);
       marcarBuena = function () { M3().resaltarZona(p.correcta, 'pista'); };
       M3().modoTocarZonas(function (id) {
@@ -71,9 +79,9 @@
       var ops = p.tipo === 'vf' ? ['Verdadero', 'Falso'] : p.opciones;
       var buena = p.tipo === 'vf' ? (p.correcta ? 0 : 1) : (p.correcta || 0);
       var orden = p.tipo === 'vf' ? [0, 1] : SL.barajar(ops.map(function (_, i) { return i; }));
-      var t = SL.el('div', 'sl-tarjeta sl-cristal sl-pregunta');
-      t.innerHTML = '<p class="sl-tarjeta__ante">' + (p.tipo === 'vf' ? '¿Verdadero o falso?' : 'Elige la respuesta') + '</p>' +
-        '<p class="sl-pregunta__txt">' + (p.enunciado || p.pregunta.texto || p.pregunta) + '</p>';
+      var t = SL.el('div', 'sl-lamina__caja');
+      t.innerHTML = '<p class="sl-lamina__ante">' + (p.tipo === 'vf' ? '¿Verdadero o falso?' : 'Elige la respuesta') + '</p>' +
+        '<p class="sl-lamina__txt">' + (p.enunciado || p.pregunta.texto || p.pregunta) + '</p>';
       var lista = SL.el('div', 'sl-opciones' + (p.tipo === 'vf' ? ' sl-opciones--vf' : ''));
       var botones = [];
       orden.forEach(function (i, k) {
@@ -87,15 +95,15 @@
       });
       marcarBuena = function () { botones[buena].classList.add('sl-opcion--pista'); };
       t.appendChild(lista);
-      J.centro.innerHTML = ''; J.centro.appendChild(t);
+      lamina(t);
       SL.Guia.decir([pregunta], null, { espera: 'Elige una respuesta' });
       return;
     }
 
     if (p.tipo === 'ordenar') {
       var items = p.items, siguiente = 0;
-      var tt = SL.el('div', 'sl-tarjeta sl-cristal');
-      tt.innerHTML = '<p class="sl-tarjeta__ante">Ordena</p><p class="sl-pregunta__txt">' + (p.enunciado || 'Toca en orden') + '</p>';
+      var tt = SL.el('div', 'sl-lamina__caja');
+      tt.innerHTML = '<p class="sl-lamina__ante">Ordena</p><p class="sl-lamina__txt">' + (p.enunciado || 'Toca en orden') + '</p>';
       var huecos = SL.el('div', 'sl-huecos'), fichas = SL.el('div', 'sl-fichas'), hs = [], fs = {};
       items.forEach(function () { var h = SL.el('div', 'sl-hueco'); hs.push(h); huecos.appendChild(h); });
       SL.barajar(items.map(function (_, i) { return i; })).forEach(function (i) {
@@ -113,7 +121,7 @@
       });
       marcarBuena = function () { if (fs[siguiente]) fs[siguiente].classList.add('pista'); };
       tt.appendChild(huecos); tt.appendChild(fichas);
-      J.centro.innerHTML = ''; J.centro.appendChild(tt);
+      lamina(tt);
       SL.Guia.decir([pregunta], null, { espera: 'Toca en orden' });
     }
   };
