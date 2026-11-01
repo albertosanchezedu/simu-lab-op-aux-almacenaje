@@ -12,7 +12,7 @@ Lee **README.md** antes de nada.
   - todo se puede parar y retomar (progreso guardado por equipo).
 - **Personajes: el mínimo**. Solo Alberto y María. No inventar personajes nuevos: cada uno obliga a Alberto a crearlo. Si es imprescindible, pedirlo antes.
 - **Estructura del mundo**: World Prompt Pack (mundo, vida, interacción, paneles de cristal, extras). Maqueta low-poly que se note simulada. Personas mini (estilo Cubic, sin cara) con ropa de seguridad: chaleco, botas y casco.
-- **Look**: el MISMO marco que Cubic Lab (portada, barra solo con «SimuLab», escenario, panel del personaje, pie, «?» y copyright iguales). Paleta de María y Serenitos: mostaza, blanco, frambuesa.
+- **Look**: la MISMA interfaz que Cubic Lab, colores incluidos (morados): Cubic Lab es una extracción puntual de Simu Lab. Barra solo con «Simu Lab» (dos palabras). Los colores de Serenitos (mostaza, blanco, frambuesa) solo en el mundo 3D y la historia.
 - **Historia**: Serenitos (crema de queso de oveja). Carmen (madre) y Manuela (abuela) solo se nombran.
 - **Cada capítulo**: pantalla intermedia al entrar + teoría para copiar en el cuaderno (paso `cuaderno`) + preguntas.
 - **Arquitectura**: lo genérico en `core/`; el mundo en `mundo/`; cada unidad en su carpeta `unidades/utN-*/`, independiente.

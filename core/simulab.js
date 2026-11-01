@@ -9,7 +9,7 @@
 
   // La marca SimuLab es común a todos los simuladores (como Cubic Lab): no cambia de uno a otro.
   SL.marca = {
-    nombre: 'SimuLab',
+    nombre: 'Simu Lab',
     antetitulo: 'La empresa, en tus manos',
     derechos: '© Alberto Sánchez Cabanillas · Todos los derechos reservados'
   };
