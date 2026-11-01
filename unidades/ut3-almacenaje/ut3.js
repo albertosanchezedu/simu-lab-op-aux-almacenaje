@@ -94,7 +94,7 @@
             opciones: ['Para que lo que entra no se mezcle con lo que sale', 'Porque queda más bonito', 'Para que los camiones esperen más'], correcta: 0,
             pistas: ['¿Qué pasaría si lo que llega y lo que sale estuvieran juntos?', 'Piensa en cajas mezcladas y errores.', 'Separadas, **lo que entra no se mezcla con lo que sale**. Menos errores.'],
             bien: 'Muy bien pensado. Separar evita errores.' },
-          { tipo: 'ordenar', etapa: 3, pregunta: A('explica', 'Último reto. Ordena el camino de un tarro.'), enunciado: '¿Por qué zonas pasa la mercancía? Toca en orden.',
+          { tipo: 'ordenar', etapa: 3, pregunta: A('explica', 'Último reto. Ordena el camino de un tarro.'), enunciado: '¿Por qué zonas pasa la mercancía? Arrastra cada una a su número.',
             items: ['Carga y descarga', 'Recepción', 'Almacenaje', 'Preparación de pedidos', 'Expedición'],
             pistas: ['¿Qué pasa primero: llega o sale?', 'Empieza por donde para el camión.', 'Orden: descarga → recepción → almacenaje → preparación → expedición.'],
             bien: '¡Perfecto! Ese es el camino de la mercancía.' },

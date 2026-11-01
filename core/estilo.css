@@ -596,6 +596,12 @@ body:has(.sl-portada) #sl-ver-tuto { display: none; }
 .sl-ficha-ord { border: 0; cursor: pointer; padding: 12px 18px; border-radius: var(--rp); background: #fff; box-shadow: 0 8px 20px -14px #2e236366, inset 0 0 0 2px var(--line); font: 700 16px var(--f-texto); color: var(--text); }
 .sl-ficha-ord:hover { box-shadow: inset 0 0 0 2px var(--sl-acento); }
 .sl-ficha-ord.mal { box-shadow: inset 0 0 0 2px #e0806a; animation: sl-no .4s ease; }
+.sl-ficha-ord { touch-action: none; user-select: none; cursor: grab; }
+.sl-ficha-ord.cogida, .sl-ficha-ord.puesta { visibility: hidden; }          /* deja su sitio: nada se mueve */
+.sl-ficha-ord--fantasma { position: fixed; z-index: 90; margin: 0; pointer-events: none; cursor: grabbing; transform: scale(1.05) rotate(-2deg); box-shadow: 0 18px 30px -14px #2e236388, inset 0 0 0 2px var(--sl-acento); }
+.sl-hueco.encima { border-color: var(--sl-acento); background: #ece6fa; }
+.sl-hueco.mal { animation: sl-no .4s ease; border-color: #e0806a; }
+.sl-hueco.pista { border-color: var(--sl-mostaza); }
 .sl-ficha-ord.pista { box-shadow: inset 0 0 0 3px var(--sl-mostaza); animation: sl-pista 1.1s ease-in-out infinite; }
 
 /* Tocar en el almacén: aviso abajo, centrado */
@@ -652,7 +658,7 @@ body:has(.sl-portada) #sl-ver-tuto { display: none; }
 .sl-pie--fijo { position: fixed; z-index: 4; left: 0; right: 0; bottom: 0; height: 62px; margin: 0; padding-left: 30px;
   background: linear-gradient(to top, var(--sl-fondo) 55%, transparent); }
 body:has(.sl-pantalla) .sl-ayuda, body:has(.sl-pantalla) .sl-creditos { z-index: 55; }
-@media (max-width: 759px) { .sl-pie--fijo { display: none; } body:has(.sl-portada) .sl-ayuda { display: none; } }
+@media (max-width: 759px) { .sl-pie--fijo { display: none; } body:has(.sl-pantalla) .sl-ayuda { display: none; } }
 
 /* ---------- Mandos del mapa (como en Cubic Lab): 2D/3D, nombres, día/noche, zoom y explorar ---------- */
 .sl-mando { position: absolute; z-index: 4; }

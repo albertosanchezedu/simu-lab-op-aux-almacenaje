@@ -17,7 +17,7 @@
       acento: ACENTO,
       cielo: '#ece9e0', cieloAlto: '#a8c8e0', cieloNoche: '#1d2438',
       suelo: '#e4dccb', cesped: '#d3c08a', campo: '#d4c491', loma: '#c9b67e', loma2: '#a3a476', asfalto: '#cfc9bd',
-      losa: '#e7e1d6', sueloNave: '#f8f5ef', muro: '#f3efe8',
+      losa: '#e7e1d6', sueloNave: '#c9cac7', muro: '#f3efe8',
       rackPuntal: '#5a4a40', rackLarguero: MOSTAZA, madera: '#d2a96f',
       cajas: ['#c9a06a', '#d8b47e', '#f7f2e8', ACENTO, MOSTAZA],
       arbol: '#a3ad8c', arbol2: '#5e7a4c', fabrica: '#f7f2e8', tejado: MOSTAZA
@@ -90,7 +90,7 @@
       { tipo: 'mesaEtiquetado', x: -10.2, z: -3.5, giro: 0, info: { nombre: 'Puesto de etiquetado', texto: 'Aquí se pesa la caja y se le pone su etiqueta.', datos: [['Equipos', 'Báscula y etiquetadora']] } },
       { tipo: 'palets', semilla: 6, puntos: [[-10.2, -8.5], [-9, 9.2], [-11, 9.2]] },
       // Personas trabajando (chaleco reflectante): se ve qué hace cada uno
-      { tipo: 'trabajador', accion: 'etiquetar', x: -10.2, y: 0.21, z: -2.6, giro: Math.PI, semilla: 41,
+      { tipo: 'trabajador', accion: 'etiquetar', x: -10.2, y: 0.21, z: -2.65, giro: 0, semilla: 41,
         info: { nombre: 'Etiquetadora', texto: 'Pesa cada caja y le pone su etiqueta con el código.', datos: [['Herramienta', 'Báscula y etiquetadora']], grupo: 'Personas' } },
       { tipo: 'trabajador', accion: 'revisar', x: -16.8, y: 0.21, z: 1.2, giro: -Math.PI / 2, semilla: 43,
         info: { nombre: 'Recepcionista', texto: 'Revisa lo que llega: cuenta las cajas y mira que no estén rotas.', datos: [['Herramienta', 'Lector de códigos'], ['Documento', 'Albarán']], grupo: 'Personas' } },
@@ -110,7 +110,7 @@
       { tipo: 'fabrica', x: -4, z: -27, ancho: 30, fondo: 12, rotulo: 'Serenitos',
         info: { nombre: 'Obrador', texto: 'Aquí se hace la crema con la receta de la abuela Manuela. Sale fresca hacia la cámara de frío.', datos: [['Producción', '3.000 tarritos al día'], ['Objetivo', '× 10']], anillo: 6 } },
       { tipo: 'patioAireLibre', x: -32, z: -26, ancho: 11, fondo: 6, info: { nombre: 'Almacén al aire libre', texto: 'Sin techo. Solo para lo que no se estropea: palés vacíos.', datos: [['Palés vacíos', '≈ 60']], anillo: 3 } },
-      { tipo: 'cartel', x: -17, z: 20.6, texto: 'Santa Aurelia', logo: 'assets/marca/serenitos-isologo.png' },
+      { tipo: 'cartel', x: -17, z: 20.6, texto: 'Serenitos', logo: 'assets/marca/serenitos-isologo.png' },
       { tipo: 'caseta', x: -44.5, z: 14 }, { tipo: 'caseta', x: 44.5, z: 14, giro: Math.PI },
       { tipo: 'aparcamiento', x: -3, z: 17, plazas: 7, coches: [0, 1, 3, 5] },
       // muros de piedra seca de la finca (como en la dehesa)
@@ -130,14 +130,14 @@
       { tipo: 'camion', capa: 'fuera', vel: 6, color: '#f4f2ee', rotulo: 'VIDRIOS DEL GUADIANA', cargaInicial: true, inicio: 1,
         info: { nombre: 'Camión del proveedor', texto: 'Trae tarros de cristal vacíos, tapas y etiquetas.', datos: [['Matrícula', '4821 KLM'], ['Carga', '18 palés'], ['Destino', 'Muelle 1']] },
         // llega, pasa el muelle, se para y entra marcha atrás; descarga y sale de frente
-        ruta: [[-220, 24.5], [-47.5, 24.5], [-39.5, 18], [-39.5, -15], [-39.5, -6, { atras: true }], [-28, -6, { atras: true, espera: 4 }], [-27.9, -6, { atras: true, espera: 6, carga: false }],
-               [-36.5, -6], [-36.5, 18], [-44.5, 27.5], [-220, 27.5], [-220, 24.5, { salto: true, carga: true }]] },
+        ruta: [[-220, 27.5], [-47.5, 27.5], [-39.5, 18], [-39.5, -15], [-39.5, -6, { atras: true }], [-28, -6, { atras: true, espera: 4 }], [-27.9, -6, { atras: true, espera: 6, carga: false }],
+               [-36.5, -6], [-36.5, 18], [-44.5, 24.5], [-220, 24.5], [-220, 27.5, { salto: true, carga: true }]] },
       { tipo: 'camion', capa: 'fuera', vel: 6, color: '#ffffff', rotulo: 'SERENITOS', inicio: 1,
         info: { nombre: 'Camión hacia el supermercado', texto: 'Se lleva los pedidos a las 40 tiendas.', datos: [['Matrícula', '1156 MBR'], ['Pedido', '22 palés'], ['Destino', 'Plataforma regional']] },
-        ruta: [[220, 27.5], [47.5, 27.5], [39.5, 18], [39.5, -1], [39.5, 8, { atras: true }], [28, 8, { atras: true, espera: 4 }], [27.9, 8, { atras: true, espera: 6, carga: true }],
-               [36.5, 8], [36.5, 18], [44.5, 24.5], [220, 24.5], [220, 27.5, { salto: true, carga: false }]] },
-      { tipo: 'coche', capa: 'fuera', vel: 9, color: '#2f4fa3', inicio: 1, ruta: [[-230, 24.5], [230, 24.5], [230, 27.5, { salto: true }], [-230, 27.5], [-230, 24.5, { salto: true }]] },
-      { tipo: 'coche', capa: 'fuera', vel: 8, color: '#e3c04a', inicio: 3, ruta: [[-230, 24.5], [230, 24.5], [230, 27.5, { salto: true }], [-230, 27.5], [-230, 24.5, { salto: true }]] },
+        ruta: [[220, 24.5], [47.5, 24.5], [39.5, 18], [39.5, -1], [39.5, 8, { atras: true }], [28, 8, { atras: true, espera: 4 }], [27.9, 8, { atras: true, espera: 6, carga: true }],
+               [36.5, 8], [36.5, 18], [44.5, 27.5], [220, 27.5], [220, 24.5, { salto: true, carga: false }]] },
+      { tipo: 'coche', capa: 'fuera', vel: 9, color: '#2f4fa3', inicio: 1, ruta: [[-230, 27.5], [230, 27.5], [230, 24.5, { salto: true }], [-230, 24.5], [-230, 27.5, { salto: true }]] },
+      { tipo: 'coche', capa: 'fuera', vel: 8, color: '#e3c04a', inicio: 3, ruta: [[-230, 27.5], [230, 27.5], [230, 24.5, { salto: true }], [-230, 24.5], [-230, 27.5, { salto: true }]] },
       // Dentro de la nave: personas con chaleco (andan por los pasillos)
       { tipo: 'persona', capa: 'peaton', vel: 1.1, chaleco: true, semilla: 31, info: { nombre: 'Mozo de almacén', texto: 'Lleva y trae mercancía entre zonas. Siempre por el pasillo peatonal.', datos: [['Ropa', 'Chaleco y botas de seguridad']] }, ruta: [[-19.5, 10.9, { espera: 3 }], [-9, 10.9, { espera: 2 }]] },
       { tipo: 'persona', capa: 'peaton', vel: 1.0, chaleco: true, casco: true, semilla: 33, info: { nombre: 'Jefa de recepción', texto: 'Comprueba que lo que llega coincide con el pedido.', datos: [['Ropa', 'Chaleco y casco']] }, ruta: [[-20.5, -10.5, { espera: 4 }], [-14, -10.5, { espera: 3 }]] },

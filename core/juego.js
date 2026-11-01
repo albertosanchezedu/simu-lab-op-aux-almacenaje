@@ -101,28 +101,52 @@
     }
 
     if (p.tipo === 'ordenar') {
-      var items = p.items, siguiente = 0;
+      // Se ARRASTRA cada tarjeta a su número. Nada cambia de tamaño: la tarjeta colocada deja su hueco vacío.
+      var items = p.items, puestos = 0;
       var tt = SL.el('div', 'sl-lamina__caja');
-      tt.innerHTML = '<p class="sl-lamina__ante">Ordena</p><p class="sl-lamina__txt">' + (p.enunciado || 'Toca en orden') + '</p>';
+      tt.innerHTML = '<p class="sl-lamina__ante">Ordena</p><p class="sl-lamina__txt">' + (p.enunciado || 'Arrastra cada tarjeta a su número') + '</p>';
       var huecos = SL.el('div', 'sl-huecos'), fichas = SL.el('div', 'sl-fichas'), hs = [], fs = {};
-      items.forEach(function () { var h = SL.el('div', 'sl-hueco'); hs.push(h); huecos.appendChild(h); });
+      items.forEach(function (_, k) { var h = SL.el('div', 'sl-hueco'); h.dataset.n = k; hs.push(h); huecos.appendChild(h); });
+      function soltarEn(i, x, y) {
+        var bajo = document.elementFromPoint(x, y), h = bajo && bajo.closest ? bajo.closest('.sl-hueco') : null;
+        if (!h || h.classList.contains('lleno')) return false;
+        if (+h.dataset.n === i) {
+          h.textContent = items[i]; h.classList.add('lleno'); fs[i].classList.add('puesta'); puestos++;
+          Object.keys(fs).forEach(function (k) { fs[k].classList.remove('pista'); });
+          hs.forEach(function (x2) { x2.classList.remove('pista'); });
+          if (puestos === items.length) acierto(); else if (fallos >= 3) marcarBuena();
+        } else { h.classList.remove('mal'); void h.offsetWidth; h.classList.add('mal'); fs[i].classList.add('mal'); setTimeout(function () { fs[i].classList.remove('mal'); }, 450); fallo(); }
+        return true;
+      }
       SL.barajar(items.map(function (_, i) { return i; })).forEach(function (i) {
-        var f = SL.el('button', 'sl-ficha-ord', items[i]); fs[i] = f;
-        f.onclick = function () {
-          if (hecho) return;
-          if (i === siguiente) {
-            hs[siguiente].textContent = items[i]; hs[siguiente].classList.add('lleno'); f.remove(); siguiente++;
-            Object.keys(fs).forEach(function (k) { fs[k].classList.remove('pista'); });
-            if (siguiente === items.length) acierto();
-            else if (fallos >= 3) fs[siguiente].classList.add('pista');
-          } else { f.classList.remove('mal'); void f.offsetWidth; f.classList.add('mal'); fallo(); }
-        };
+        var f = SL.el('button', 'sl-ficha-ord', items[i]); fs[i] = f; f.type = 'button';
+        f.addEventListener('pointerdown', function (e) {
+          if (hecho || f.classList.contains('puesta')) return;
+          e.preventDefault();
+          var r = f.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+          var fant = f.cloneNode(true); fant.className = 'sl-ficha-ord sl-ficha-ord--fantasma';
+          fant.style.width = r.width + 'px'; fant.style.left = r.left + 'px'; fant.style.top = r.top + 'px';
+          document.body.appendChild(fant); f.classList.add('cogida');
+          function mover(ev) {
+            fant.style.left = (ev.clientX - dx) + 'px'; fant.style.top = (ev.clientY - dy) + 'px';
+            var bajo = document.elementFromPoint(ev.clientX, ev.clientY), h = bajo && bajo.closest ? bajo.closest('.sl-hueco') : null;
+            hs.forEach(function (x2) { x2.classList.toggle('encima', x2 === h && !x2.classList.contains('lleno')); });
+          }
+          function fin(ev) {
+            document.removeEventListener('pointermove', mover); document.removeEventListener('pointerup', fin); document.removeEventListener('pointercancel', fin);
+            hs.forEach(function (x2) { x2.classList.remove('encima'); });
+            fant.style.visibility = 'hidden'; soltarEn(i, ev.clientX, ev.clientY); fant.remove(); f.classList.remove('cogida');
+          }
+          document.addEventListener('pointermove', mover); document.addEventListener('pointerup', fin); document.addEventListener('pointercancel', fin);
+        });
         fichas.appendChild(f);
       });
-      marcarBuena = function () { if (fs[siguiente]) fs[siguiente].classList.add('pista'); };
+      marcarBuena = function () {
+        for (var k = 0; k < items.length; k++) if (!hs[k].classList.contains('lleno')) { fs[k].classList.add('pista'); hs[k].classList.add('pista'); return; }
+      };
       tt.appendChild(huecos); tt.appendChild(fichas);
       lamina(tt);
-      SL.Guia.decir([pregunta], null, { espera: 'Toca en orden' });
+      SL.Guia.decir([pregunta], null, { espera: 'Arrastra a su número' });
     }
   };
 })();

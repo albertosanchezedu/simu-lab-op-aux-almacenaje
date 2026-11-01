@@ -49,24 +49,42 @@
     img.style.transform = 'translateX(-50%) translateX(' + (-off).toFixed(1) + 'px)';
   }
 
+  // Como en Cubic Lab: la pose se carga ANTES de enseñarla, se coloca y solo entonces se funde.
+  // Así no hay saltos ni parpadeos al cambiar de gesto o de personaje.
+  var listas = {};
+  function precargar(cod, listo) {
+    if (cod in listas) { if (listas[cod] === 'cargando') setTimeout(function () { precargar(cod, listo); }, 40); else listo(listas[cod]); return; }
+    listas[cod] = 'cargando';
+    var im = new Image();
+    im.onload = function () { listas[cod] = true; listo(true); };
+    im.onerror = function () { listas[cod] = false; listo(false); };
+    im.src = SL.recurso(RUTA + cod + '.png');
+  }
+  G.precargarTodo = function () {
+    var ps = (SL.historia && SL.historia.personajes) || {};
+    Object.keys(ps).forEach(function (k) { var g = ps[k].gestos || {}; Object.keys(g).forEach(function (n) { precargar(g[n], function () {}); }); });
+  };
   function figura(quien, gesto) {
     var p = personaje(quien), cod = p.gestos && (p.gestos[gesto] || p.gestos[p.gestoBase]);
     var clave = quien + '|' + (cod || '');
     if (clave === codigo) return;
     codigo = clave;
-    var capa = SL.el('div', 'sl-personaje__capa');
-    if (cod) {
-      var im = new Image(); im.alt = p.nombre; im.src = SL.recurso(RUTA + cod + '.png');
-      im.onload = function () { encajar(im); };
-      im.onerror = function () { capa.innerHTML = silueta(p); };
-      capa.appendChild(im);
-    } else capa.innerHTML = silueta(p);
-    var viejas = elImg.querySelectorAll('.sl-personaje__capa');
-    elImg.appendChild(capa);
-    requestAnimationFrame(function () {
-      capa.classList.add('sl-personaje__capa--ve');
-      viejas.forEach(function (v) { v.classList.remove('sl-personaje__capa--ve'); setTimeout(function () { v.remove(); }, 400); });
-    });
+    var poner2 = function (hay) {
+      if (codigo !== clave) return;                                           // ya habla otro: llega tarde
+      var capa = SL.el('div', 'sl-personaje__capa');
+      if (hay) { var im = new Image(); im.alt = p.nombre; im.src = SL.recurso(RUTA + cod + '.png'); capa.appendChild(im); }
+      else capa.innerHTML = silueta(p);
+      var viejas = elImg.querySelectorAll('.sl-personaje__capa');
+      elImg.appendChild(capa);
+      requestAnimationFrame(function () {
+        if (im) encajar(im);
+        requestAnimationFrame(function () {
+          capa.classList.add('sl-personaje__capa--ve');
+          viejas.forEach(function (v) { v.classList.remove('sl-personaje__capa--ve'); setTimeout(function () { v.remove(); }, 450); });
+        });
+      });
+    };
+    if (cod) precargar(cod, poner2); else poner2(false);
   }
 
   function poner(texto, sinFundido) {
@@ -107,6 +125,7 @@
     btnSig = sig; btnAtras = atras;
     if (window.ResizeObserver) new ResizeObserver(function () { elPanel.style.setProperty('--ancho-panel', elPanel.clientWidth + 'px'); }).observe(elPanel);
     window.addEventListener('resize', function () { elImg.querySelectorAll('img').forEach(encajar); });
+    G.precargarTodo();
     btnSig.addEventListener('click', function () {
       if (idx < lineas.length - 1) { idx++; mostrar(); }
       else if (alTerminar) { var f = alTerminar; alTerminar = null; f(); }
